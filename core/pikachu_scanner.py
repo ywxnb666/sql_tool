@@ -3,7 +3,7 @@ from core.sqli_scanner import SQLInjectionScanner
 class PikachuSQLiScanner(SQLInjectionScanner):
     """Pikachu靶场专用SQL注入扫描器"""
     
-    def __init__(self, base_url, output_callback=None, progress_callback=None, changes_callback=None):
+    def __init__(self, base_url, output_callback=None, progress_callback=None, changes_callback=None, enable_file_output=False):
         """
         初始化Pikachu扫描器
         
@@ -12,8 +12,9 @@ class PikachuSQLiScanner(SQLInjectionScanner):
             output_callback: 输出回调函数
             progress_callback: 进度更新回调函数
             changes_callback: 页面变化回调函数，用于将页面变化信息传递给GUI
+            enable_file_output: 是否启用文件输出功能
         """
-        super().__init__(base_url, output_callback, progress_callback, changes_callback)
+        super().__init__(base_url, output_callback, progress_callback, changes_callback, enable_file_output)
     
     def test_numeric_injection(self):
         """测试数字型注入 (sqli_id.php)"""
@@ -122,9 +123,9 @@ class PikachuSQLiScanner(SQLInjectionScanner):
 
     def run_complete_scan(self):
         """运行完整的Pikachu SQL注入扫描"""
-        self.print("=" * 60)
+        self.print("=" * 30)
         self.print("Pikachu SQL注入自动化扫描器")
-        self.print("=" * 60)
+        self.print("=" * 30)
         
         # 初始化进度
         self.update_progress(0, "开始扫描")

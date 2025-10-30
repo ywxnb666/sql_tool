@@ -2,7 +2,13 @@ import tkinter as tk
 from tkinter import scrolledtext, ttk, messagebox
 import threading
 import sys
+import os
+import glob
 from io import StringIO
+
+# 添加项目根目录到Python路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from core.pikachu_scanner import PikachuSQLiScanner
 
 class TextRedirector:
@@ -67,6 +73,7 @@ class SQLInjectionGUITool:
         self.scan_btn = ttk.Button(self.config_frame, text="开始扫描", command=self.start_scan)
         self.clear_btn = ttk.Button(self.config_frame, text="清空结果", command=self.clear_results)
         self.show_changes_btn = ttk.Button(self.config_frame, text="显示网站变化", command=self.toggle_changes_window)
+        self.load_results_btn = ttk.Button(self.config_frame, text="加载最新结果", command=self.load_latest_results)
         
         # 进度条和状态标签
         self.progress_frame = ttk.Frame(self.root)
@@ -93,15 +100,11 @@ class SQLInjectionGUITool:
     
     def _init_changes_styles(self):
         """初始化网站变化输出区域的样式"""
-        # 关键差异样式 - 使用明亮的绿色，加粗，白色背景
-        self.changes_text.tag_config("difference", foreground="#00AA00", background="#FFFFFF", 
-                                   font=("SimHei", 10, "bold"))
-        
-        # 标签样式 - 使用蓝色
-        self.changes_text.tag_config("label", foreground="#0000FF", font=("SimHei", 10, "bold"))
-        
-        # 错误样式 - 使用红色
-        self.changes_text.tag_config("error", foreground="#FF0000", font=("SimHei", 10, "bold"))
+        # 配置文本控件样式
+        self.changes_text.tag_config('difference', foreground='green')
+        self.changes_text.tag_config('label', foreground='blue')
+        self.changes_text.tag_config('separator', foreground='gray')
+        self.changes_text.tag_config('error', foreground='red', background='#ffeeee')
         
     def setup_layout(self):
         """设置UI布局"""
@@ -114,6 +117,7 @@ class SQLInjectionGUITool:
         self.clear_btn.grid(row=0, column=4, padx=5, pady=10)
         # 移除显示网站变化按钮，因为我们现在在同一窗口显示
         # self.show_changes_btn.grid(row=0, column=5, padx=5, pady=10)
+        self.load_results_btn.grid(row=0, column=5, padx=5, pady=10)
         
         # 设置列权重，使URL输入框能够拉伸
         self.config_frame.grid_columnconfigure(1, weight=1)
@@ -164,9 +168,7 @@ class SQLInjectionGUITool:
             
             # 提取关键信息
             output_info = changes.get('output', {})
-            if not output_info:
-                self.changes_text.configure(state='disabled')
-                return
+            input_info = changes.get('input', {})
             
             # 获取内容预览
             content_preview = output_info.get('content_preview', '').strip()
@@ -174,50 +176,65 @@ class SQLInjectionGUITool:
             # 无条件显示任何内容，确保窗口不为空
             if not content_preview:
                 content_preview = "[无内容] 未获取到内容预览"
-                # 继续显示，不返回
             
-            # 如果已有内容，添加分隔线
+            # 如果已有内容，添加更清晰的分隔线
             current_content = self.changes_text.get(1.0, tk.END).strip()
             if current_content:
-                self.changes_text.insert(tk.END, "=" * 30 + "\n")
-            
-            # 只显示测试参数和关键差异，不显示其他无关信息
-            input_info = changes.get('input', {})
-            if input_info:
-                # 提取测试参数
-                test_param = ""
-                if input_info.get('params'):
-                    params = input_info.get('params')
-                    # 找出主要测试参数（排除submit）
-                    for k, v in params.items():
-                        if k.lower() != 'submit':
-                            test_param = f"{k}={v}"
-                            break
-                    if not test_param and params:
-                        k, v = list(params.items())[0]
-                        test_param = f"{k}={v}"
-                elif input_info.get('data'):
-                    data = input_info.get('data')
-                    if data:
-                        k, v = list(data.items())[0]
-                        test_param = f"{k}={v}"
-                
-                if test_param:
-                    method = input_info.get('method', 'GET').upper()
-                    self.changes_text.insert(tk.END, f"[测试]: {method} {test_param}\n")
+                self.changes_text.insert(tk.END, "\n" + "-" * 50 + "\n\n", "separator")
             
             # 显示时间戳
             timestamp = changes.get('timestamp', '')
             if timestamp:
-                self.changes_text.insert(tk.END, f"[时间]: {timestamp}\n")
+                self.changes_text.insert(tk.END, f"[时间]: {timestamp}\n", "label")
+            
+            # 显示URL信息（与文件输出保持一致）
+            url = input_info.get('url', '')
+            if url:
+                self.changes_text.insert(tk.END, f"[URL]: {url}\n", "label")
+            
+            # 显示方法信息
+            method = input_info.get('method', 'GET').upper()
+            self.changes_text.insert(tk.END, f"[方法]: {method}\n", "label")
+            
+            # 显示参数或数据信息
+            if input_info.get('params'):
+                params = input_info.get('params')
+                self.changes_text.insert(tk.END, f"[参数]: {params}\n", "label")
+            elif input_info.get('data'):
+                data = input_info.get('data')
+                self.changes_text.insert(tk.END, f"[数据]: {data}\n", "label")
+            
+            # 提取测试参数（用于更简洁的显示）
+            test_param = ""
+            if input_info.get('params'):
+                params = input_info.get('params')
+                # 找出主要测试参数（排除submit）
+                for k, v in params.items():
+                    if k.lower() != 'submit':
+                        test_param = f"{k}={v}"
+                        break
+                if not test_param and params:
+                    k, v = list(params.items())[0]
+                    test_param = f"{k}={v}"
+            elif input_info.get('data'):
+                data = input_info.get('data')
+                if data:
+                    k, v = list(data.items())[0]
+                    test_param = f"{k}={v}"
+            
+            if test_param:
+                self.changes_text.insert(tk.END, f"[测试]: {method} {test_param}\n", "label")
+            
+            # 智能格式化差异内容
+            formatted_changes = self._format_changes_content(content_preview)
             
             # 插入差异内容，使用绿色样式
-            self.changes_text.insert(tk.END, content_preview + "\n", "difference")
+            self.changes_text.insert(tk.END, formatted_changes + "\n", "difference")
             
             # 显示状态码信息，不再限制特定格式
             if 'status_code' in output_info:
                 status_info = f"[状态码]: {output_info.get('status_code')}\n"
-                self.changes_text.insert(tk.END, status_info)
+                self.changes_text.insert(tk.END, status_info, "label")
             
             # 滚动到底部
             self.changes_text.see(tk.END)
@@ -227,9 +244,109 @@ class SQLInjectionGUITool:
             # 错误情况下简单处理
             try:
                 self.changes_text.configure(state='normal')
+                self.changes_text.insert(tk.END, f"[错误] 显示变化时出错: {str(e)}\n", "error")
                 self.changes_text.configure(state='disabled')
             except:
                 pass
+    
+    def _format_changes_content(self, content):
+        """智能格式化变化内容，改善可读性"""
+        if not content:
+            return ""
+            
+        # 分割并处理每一行
+        lines = content.split('\n')
+        formatted_lines = []
+        
+        for line in lines:
+            # 清理空白
+            line = line.strip()
+            if not line:
+                continue
+            
+            # 智能识别和格式化键值对格式
+            if ':' in line or '=' in line:
+                # 尝试为键值对添加适当的缩进
+                if any(key in line.lower() for key in ['your uid', 'your email', 'password', 'username', 'id']):
+                    # 这看起来是重要的用户信息，保持原样或增强格式
+                    formatted_lines.append(line)
+                else:
+                    # 尝试识别键和值并添加缩进
+                    if ': ' in line:
+                        key, value = line.split(': ', 1)
+                        formatted_lines.append(f"  {key}: {value}")
+                    elif '=' in line and ' ' not in line.split('=')[0]:
+                        key, value = line.split('=', 1)
+                        formatted_lines.append(f"  {key}={value}")
+                    else:
+                        formatted_lines.append(line)
+            else:
+                # 检查是否包含邮箱、哈希值等特殊格式
+                import re
+                if re.search(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}', line):
+                    formatted_lines.append(f"  {line}")  # 邮箱地址添加缩进
+                elif re.search(r'\b[0-9a-f]{32,}\b', line, re.IGNORECASE):
+                    formatted_lines.append(f"  {line}")  # 哈希值添加缩进
+                else:
+                    formatted_lines.append(line)
+        
+        # 重新组合成文本
+        return '\n'.join(formatted_lines)
+    
+    def find_latest_files(self):
+        """找到scan_results目录中最新的两个文件"""
+        scan_results_dir = os.path.join(os.getcwd(), 'scan_results')
+        
+        if not os.path.exists(scan_results_dir):
+            return None, None
+        
+        # 查找所有txt文件
+        txt_files = glob.glob(os.path.join(scan_results_dir, '*.txt'))
+        
+        if not txt_files:
+            return None, None
+        
+        # 按修改时间排序，最新的在前
+        txt_files.sort(key=os.path.getmtime, reverse=True)
+        
+        # 分离两种类型的文件
+        scan_results_files = [f for f in txt_files if 'scan_results' in os.path.basename(f)]
+        dynamic_output_files = [f for f in txt_files if 'dynamic_output' in os.path.basename(f)]
+        
+        latest_scan_results = scan_results_files[0] if scan_results_files else None
+        latest_dynamic_output = dynamic_output_files[0] if dynamic_output_files else None
+        
+        return latest_scan_results, latest_dynamic_output
+    
+    def load_results_from_files(self):
+        """从文件加载最新结果并更新GUI，确保内容完全一致"""
+        try:
+            scan_results_file, dynamic_output_file = self.find_latest_files()
+            
+            # 加载扫描结果
+            if scan_results_file and os.path.exists(scan_results_file):
+                with open(scan_results_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                self.result_text.configure(state='normal')
+                self.result_text.delete(1.0, tk.END)
+                self.result_text.insert(tk.END, content)
+                self.result_text.configure(state='disabled')
+            
+            # 加载动态输出
+            if dynamic_output_file and os.path.exists(dynamic_output_file):
+                with open(dynamic_output_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                self.changes_text.configure(state='normal')
+                self.changes_text.delete(1.0, tk.END)
+                self.changes_text.insert(tk.END, content)
+                self.changes_text.configure(state='disabled')
+                
+        except Exception as e:
+            messagebox.showerror("错误", f"加载结果文件时出错: {str(e)}")
+    
+    def load_latest_results(self):
+        """加载最新结果按钮的回调函数"""
+        self.load_results_from_files()
     
     def toggle_changes_window(self):
         """切换变化窗口的显示/隐藏状态（现在只是显示一个提示）"""
@@ -265,7 +382,7 @@ class SQLInjectionGUITool:
                 # 重定向输出
                 sys.stdout = TextRedirector(self.result_text)
                 
-                scanner = PikachuSQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes)
+                scanner = PikachuSQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes, enable_file_output=True)
                 scanner.test_connection()
             finally:
                 # 恢复输出
@@ -328,7 +445,7 @@ class SQLInjectionGUITool:
                 sys.stdout = TextRedirector(self.result_text)
                 
                 # 创建扫描器实例，传入进度回调和页面变化回调
-                scanner = PikachuSQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes)
+                scanner = PikachuSQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes, enable_file_output=True)
                 scanner.run_complete_scan()
             finally:
                 # 恢复标准输出
@@ -346,16 +463,21 @@ class SQLInjectionGUITool:
     
     def clear_results(self):
         """清空结果按钮的回调函数"""
+        # 清空扫描结果窗口
         self.result_text.configure(state='normal')
         self.result_text.delete(1.0, tk.END)
         self.result_text.configure(state='disabled')
+        
+        # 清空网站变化输出窗口
+        self.changes_text.configure(state='normal')
+        self.changes_text.delete(1.0, tk.END)
+        self.changes_text.configure(state='disabled')
+        
         # 重置进度条和状态
         self.progress_var.set(0)
         self.progress_label.config(text="准备就绪")
         # 清空变化记录
         self.page_changes = []
-        if self.changes_window and self.changes_text:
-            self._clear_changes()
 
 def run_gui():
     """运行GUI应用的主函数"""
