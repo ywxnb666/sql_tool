@@ -1,4 +1,7 @@
 from core.sqli_scanner import SQLInjectionScanner
+from urllib.parse import urlparse
+import os
+import requests
 
 class PikachuSQLiScanner(SQLInjectionScanner):
     """Pikachu靶场专用SQL注入扫描器"""
@@ -8,18 +11,86 @@ class PikachuSQLiScanner(SQLInjectionScanner):
         初始化Pikachu扫描器
         
         参数:
-            base_url: Pikachu靶场基础URL
+            base_url: Pikachu靶场基础URL或完整URL
             output_callback: 输出回调函数
             progress_callback: 进度更新回调函数
             changes_callback: 页面变化回调函数，用于将页面变化信息传递给GUI
             enable_file_output: 是否启用文件输出功能
         """
-        super().__init__(base_url, output_callback, progress_callback, changes_callback, enable_file_output)
+        # 解析URL，提取基础URL和具体页面
+        parsed_url = urlparse(base_url)
+        if 'sqli_' in base_url:
+            # 用户输入了完整URL，提取基础URL
+            path_parts = parsed_url.path.split('/')
+            # 找到sqli_文件之前的路径作为基础URL
+            base_path = ''
+            for part in path_parts:
+                if 'sqli_' in part:
+                    break
+                if part:
+                    base_path += '/' + part
+            self.base_url = f"{parsed_url.scheme}://{parsed_url.netloc}{base_path}"
+            self.target_url = base_url
+        else:
+            # 用户输入了基础URL
+            self.base_url = base_url
+            self.target_url = None
+        
+        super().__init__(self.base_url, output_callback, progress_callback, changes_callback, enable_file_output)
+    
+    def test_connection(self):
+        """测试与靶场的连接，使用target_url或默认页面"""
+        try:
+            # 如果存在target_url，使用它测试；否则使用基础URL拼接默认页面
+            if self.target_url:
+                test_url = self.target_url
+            else:
+                test_url = f"{self.base_url}/vul/sqli/sqli_search.php"
+            
+            response = requests.get(test_url, timeout=10)
+            if response.status_code == 200:
+                self.print("[+] 连接成功！")
+                return True
+            else:
+                self.print(f"[-] 连接失败，状态码: {response.status_code}")
+                return False
+        except Exception as e:
+            self.print(f"[-] 连接错误: {str(e)}")
+            return False
+    
+    def determine_injection_type_and_method(self, url):
+        """
+        从URL自动判断注入类型和HTTP方法
+        
+        参数:
+            url: 目标URL
+            
+        返回:
+            (injection_type, http_method, test_function)
+        """
+        parsed_url = urlparse(url)
+        path = parsed_url.path
+        
+        # 基于URL路径判断注入类型
+        if 'sqli_id.php' in path:
+            return '数字型注入', 'POST', self.test_numeric_injection
+        elif 'sqli_str.php' in path:
+            return '字符型注入', 'POST', self.test_string_injection
+        elif 'sqli_search.php' in path:
+            return '搜索型注入', 'GET', self.test_search_injection
+        elif 'sqli_x.php' in path:
+            return 'XX型注入', 'GET', self.test_xx_injection
+        else:
+            # 默认使用搜索型注入
+            return '搜索型注入', 'GET', self.test_search_injection
     
     def test_numeric_injection(self):
         """测试数字型注入 (sqli_id.php)"""
         self.print("\n[*] 开始测试数字型注入...")
-        url = f"{self.base_url}/vul/sqli/sqli_id.php"
+        if self.target_url and 'sqli_id.php' in self.target_url:
+            url = self.target_url
+        else:
+            url = f"{self.base_url}/vul/sqli/sqli_id.php"
         
         # 首先测试正常请求
         normal_response = self.send_request(url, method='POST', data={'id': '1', 'submit': '查询'})
@@ -51,7 +122,10 @@ class PikachuSQLiScanner(SQLInjectionScanner):
     def test_string_injection(self):
         """测试字符型注入 (sqli_str.php)"""
         self.print("\n[*] 开始测试字符型注入...")
-        url = f"{self.base_url}/vul/sqli/sqli_str.php"
+        if self.target_url and 'sqli_str.php' in self.target_url:
+            url = self.target_url
+        else:
+            url = f"{self.base_url}/vul/sqli/sqli_str.php"
         
         # 测试基于错误的注入
         error_payload = "vince'"
@@ -74,7 +148,10 @@ class PikachuSQLiScanner(SQLInjectionScanner):
     def test_search_injection(self):
         """测试搜索型注入 (sqli_search.php)"""
         self.print("\n[*] 开始测试搜索型注入...")
-        url = f"{self.base_url}/vul/sqli/sqli_search.php"
+        if self.target_url and 'sqli_search.php' in self.target_url:
+            url = self.target_url
+        else:
+            url = f"{self.base_url}/vul/sqli/sqli_search.php"
         
         # 测试基于错误的注入
         error_payload = "a%'"
@@ -97,7 +174,10 @@ class PikachuSQLiScanner(SQLInjectionScanner):
     def test_xx_injection(self):
         """测试XX型注入 (sqli_x.php)"""
         self.print("\n[*] 开始测试XX型注入...")
-        url = f"{self.base_url}/vul/sqli/sqli_x.php"
+        if self.target_url and 'sqli_x.php' in self.target_url:
+            url = self.target_url
+        else:
+            url = f"{self.base_url}/vul/sqli/sqli_x.php"
         
         # 测试不同的闭合方式
         test_payloads = ["1')", '1\")', "1`)", "1') # ", "1') #"]
@@ -136,14 +216,24 @@ class PikachuSQLiScanner(SQLInjectionScanner):
             self.update_progress(100, "扫描失败")
             return
         
-        self.update_progress(10, "连接成功，开始测试注入类型")
+        self.update_progress(10, "连接成功，分析目标URL")
         
-        # 测试所有类型的注入
+        # 如果用户提供了完整URL，则使用它；否则使用基础URL+默认页面
+        if self.target_url:
+            target_url = self.target_url
+            self.print(f"[+] 使用用户提供的URL: {target_url}")
+        else:
+            # 默认使用搜索型注入页面
+            target_url = f"{self.base_url}/vul/sqli/sqli_search.php"
+            self.print(f"[+] 使用默认URL: {target_url}")
+        
+        # 自动判断注入类型和HTTP方法
+        injection_type, http_method, test_func = self.determine_injection_type_and_method(target_url)
+        self.print(f"[+] 自动判断: {injection_type}, HTTP方法: {http_method}")
+        
+        # 只测试与URL相关的注入类型
         injection_types = [
-            ("数字型注入", self.test_numeric_injection),
-            ("字符型注入", self.test_string_injection),
-            ("搜索型注入", self.test_search_injection),
-            ("XX型注入", self.test_xx_injection)
+            (injection_type, test_func)
         ]
         
         vulnerabilities_found = 0
@@ -176,15 +266,8 @@ class PikachuSQLiScanner(SQLInjectionScanner):
                 elif name == "XX型注入":
                     closing_pattern = "xx"
                 
-                # 获取测试URL
-                if name == "数字型注入":
-                    url = f"{self.base_url}/vul/sqli/sqli_id.php"
-                elif name == "字符型注入":
-                    url = f"{self.base_url}/vul/sqli/sqli_str.php"
-                elif name == "搜索型注入":
-                    url = f"{self.base_url}/vul/sqli/sqli_search.php"
-                elif name == "XX型注入":
-                    url = f"{self.base_url}/vul/sqli/sqli_x.php"
+                # 使用用户提供的URL或自动判断的URL
+                url = target_url
                 
                 # 判断字段数（detect_column_count内部会更新进度）
                 self.update_progress(min(100, 10 + i * 20 + 10), f"{name}检测字段数")

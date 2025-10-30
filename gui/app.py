@@ -64,9 +64,13 @@ class SQLInjectionGUITool:
         self.config_frame = ttk.LabelFrame(self.root, text="配置")
         
         # URL标签和输入框
-        self.url_label = ttk.Label(self.config_frame, text="靶场URL:", font=self.font_config)
-        self.url_var = tk.StringVar(value="http://192.168.232.128/pikachu")  # 默认地址
+        self.url_label = ttk.Label(self.config_frame, text="目标URL:", font=self.font_config)
+        self.url_var = tk.StringVar(value="")  # 移除默认地址，用户输入完整URL
         self.url_entry = ttk.Entry(self.config_frame, textvariable=self.url_var, width=40, font=self.font_config)
+        
+        # 添加灰色默认提示
+        self.default_url = "http://192.168.232.128/pikachu/vul/sqli/sqli_search.php"
+        self._add_placeholder()
         
         # 按钮
         self.test_conn_btn = ttk.Button(self.config_frame, text="测试连接", command=self.test_connection)
@@ -105,6 +109,28 @@ class SQLInjectionGUITool:
         self.changes_text.tag_config('label', foreground='blue')
         self.changes_text.tag_config('separator', foreground='gray')
         self.changes_text.tag_config('error', foreground='red', background='#ffeeee')
+    
+    def _add_placeholder(self):
+        """为URL输入框添加灰色默认提示"""
+        # 设置初始placeholder
+        self.url_entry.insert(0, self.default_url)
+        self.url_entry.config(foreground='grey')
+        
+        # 绑定焦点事件
+        self.url_entry.bind('<FocusIn>', self._on_url_entry_focus_in)
+        self.url_entry.bind('<FocusOut>', self._on_url_entry_focus_out)
+    
+    def _on_url_entry_focus_in(self, event):
+        """当URL输入框获得焦点时"""
+        if self.url_entry.get() == self.default_url:
+            self.url_entry.delete(0, tk.END)
+            self.url_entry.config(foreground='black')
+    
+    def _on_url_entry_focus_out(self, event):
+        """当URL输入框失去焦点时"""
+        if not self.url_entry.get():
+            self.url_entry.insert(0, self.default_url)
+            self.url_entry.config(foreground='grey')
         
     def setup_layout(self):
         """设置UI布局"""
@@ -221,9 +247,6 @@ class SQLInjectionGUITool:
                 if data:
                     k, v = list(data.items())[0]
                     test_param = f"{k}={v}"
-            
-            if test_param:
-                self.changes_text.insert(tk.END, f"[测试]: {method} {test_param}\n", "label")
             
             # 智能格式化差异内容
             formatted_changes = self._format_changes_content(content_preview)
@@ -369,8 +392,9 @@ class SQLInjectionGUITool:
         """测试连接按钮的回调函数"""
         url = self.url_var.get().strip()
         if not url:
-            messagebox.showerror("错误", "请输入靶场URL")
-            return
+            # 使用默认URL
+            url = "http://192.168.232.128/pikachu/vul/sqli/sqli_search.php"
+            self.update_output(f"未输入URL，使用默认URL: {url}\n")
         
         # 禁用按钮
         self.test_conn_btn.config(state=tk.DISABLED)
@@ -418,8 +442,9 @@ class SQLInjectionGUITool:
         """开始扫描按钮的回调函数"""
         url = self.url_var.get().strip()
         if not url:
-            messagebox.showerror("错误", "请输入靶场URL")
-            return
+            # 使用默认URL
+            url = "http://192.168.232.128/pikachu/vul/sqli/sqli_search.php"
+            self.update_output(f"未输入URL，使用默认URL: {url}\n")
         
         # 检查是否有正在运行的扫描
         if self.scanner_thread and self.scanner_thread.is_alive():

@@ -33,22 +33,23 @@ class SQLInjectionScanner:
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
             
-            # 生成唯一的文件名（基于时间戳）
-            timestamp = time.strftime('%Y%m%d_%H%M%S')
-            self.scan_results_file = os.path.join(self.output_dir, f'scan_results_{timestamp}.txt')
-            self.dynamic_output_file = os.path.join(self.output_dir, f'dynamic_output_{timestamp}.txt')
+            # 使用固定文件名实现续写功能
+            self.scan_results_file = os.path.join(self.output_dir, 'scan_results.txt')
+            self.dynamic_output_file = os.path.join(self.output_dir, 'dynamic_output.txt')
             
-            # 初始化文件
-            with open(self.scan_results_file, 'w', encoding='utf-8') as f:
-                f.write(f"SQL注入扫描结果 - 开始时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            # 以追加模式打开文件，并写入会话开始标记
+            with open(self.scan_results_file, 'a', encoding='utf-8') as f:
+                f.write(f"\n{'='*60}\n")
+                f.write(f"SQL注入扫描会话 - 开始时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"扫描目标: {base_url}\n")
-                f.write("="*60 + "\n\n")
+                f.write(f"{'='*60}\n\n")
             
-            with open(self.dynamic_output_file, 'w', encoding='utf-8') as f:
-                f.write(f"网站动态输出记录 - 开始时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write("="*60 + "\n\n")
+            with open(self.dynamic_output_file, 'a', encoding='utf-8') as f:
+                f.write(f"\n{'='*60}\n")
+                f.write(f"网站动态输出会话 - 开始时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"{'='*60}\n\n")
             
-            print(f"[+] 文件输出已启用")
+            print(f"[+] 文件输出已启用（续写模式）")
             print(f"[+] 扫描结果将保存至: {self.scan_results_file}")
             print(f"[+] 网站动态输出将保存至: {self.dynamic_output_file}")
         
@@ -462,11 +463,10 @@ class SQLInjectionScanner:
                                         k, v = list(data.items())[0]
                                         test_param = f"{k}={v}"
                                 
-                                # 写入时间戳、URL和测试信息
+                                # 写入时间戳和URL信息（已删除[测试]行）
                                 f.write("-" * 50 + "\n")
                                 f.write(f"[时间]: {io_record['timestamp']}\n")
                                 f.write(f"[URL]: {io_record['input'].get('url', '')}\n")
-                                f.write(f"[测试]: {method} {test_param}\n")
                                 
                                 # 写入响应信息
                                 if 'status_code' in io_record['output']:
