@@ -77,7 +77,6 @@ class SQLInjectionGUITool:
         self.scan_btn = ttk.Button(self.config_frame, text="开始扫描", command=self.start_scan)
         self.clear_btn = ttk.Button(self.config_frame, text="清空结果", command=self.clear_results)
         self.show_changes_btn = ttk.Button(self.config_frame, text="显示网站变化", command=self.toggle_changes_window)
-        self.load_results_btn = ttk.Button(self.config_frame, text="加载最新结果", command=self.load_latest_results)
         
         # 进度条和状态标签
         self.progress_frame = ttk.Frame(self.root)
@@ -143,7 +142,6 @@ class SQLInjectionGUITool:
         self.clear_btn.grid(row=0, column=4, padx=5, pady=10)
         # 移除显示网站变化按钮，因为我们现在在同一窗口显示
         # self.show_changes_btn.grid(row=0, column=5, padx=5, pady=10)
-        self.load_results_btn.grid(row=0, column=5, padx=5, pady=10)
         
         # 设置列权重，使URL输入框能够拉伸
         self.config_frame.grid_columnconfigure(1, weight=1)
@@ -316,60 +314,11 @@ class SQLInjectionGUITool:
         # 重新组合成文本
         return '\n'.join(formatted_lines)
     
-    def find_latest_files(self):
-        """找到scan_results目录中最新的两个文件"""
-        scan_results_dir = os.path.join(os.getcwd(), 'scan_results')
-        
-        if not os.path.exists(scan_results_dir):
-            return None, None
-        
-        # 查找所有txt文件
-        txt_files = glob.glob(os.path.join(scan_results_dir, '*.txt'))
-        
-        if not txt_files:
-            return None, None
-        
-        # 按修改时间排序，最新的在前
-        txt_files.sort(key=os.path.getmtime, reverse=True)
-        
-        # 分离两种类型的文件
-        scan_results_files = [f for f in txt_files if 'scan_results' in os.path.basename(f)]
-        dynamic_output_files = [f for f in txt_files if 'dynamic_output' in os.path.basename(f)]
-        
-        latest_scan_results = scan_results_files[0] if scan_results_files else None
-        latest_dynamic_output = dynamic_output_files[0] if dynamic_output_files else None
-        
-        return latest_scan_results, latest_dynamic_output
-    
-    def load_results_from_files(self):
-        """从文件加载最新结果并更新GUI，确保内容完全一致"""
-        try:
-            scan_results_file, dynamic_output_file = self.find_latest_files()
-            
-            # 加载扫描结果
-            if scan_results_file and os.path.exists(scan_results_file):
-                with open(scan_results_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                self.result_text.configure(state='normal')
-                self.result_text.delete(1.0, tk.END)
-                self.result_text.insert(tk.END, content)
-                self.result_text.configure(state='disabled')
-            
-            # 加载动态输出
-            if dynamic_output_file and os.path.exists(dynamic_output_file):
-                with open(dynamic_output_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                self.changes_text.configure(state='normal')
-                self.changes_text.delete(1.0, tk.END)
-                self.changes_text.insert(tk.END, content)
-                self.changes_text.configure(state='disabled')
-                
-        except Exception as e:
-            messagebox.showerror("错误", f"加载结果文件时出错: {str(e)}")
-    
-    def load_latest_results(self):
-        """加载最新结果按钮的回调函数"""
-        self.load_results_from_files()
+
+
+
+
+
     
     def toggle_changes_window(self):
         """切换变化窗口的显示/隐藏状态（现在只是显示一个提示）"""
