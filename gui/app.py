@@ -79,9 +79,16 @@ class SQLInjectionGUITool:
         self.clear_btn = ttk.Button(self.config_frame, text="清空结果", command=self.clear_results)
         self.show_changes_btn = ttk.Button(self.config_frame, text="显示网站变化", command=self.toggle_changes_window)
         
-        # 多安全级别测试选项
-        self.test_all_levels_var = tk.BooleanVar(value=True)
-        self.test_all_levels_check = ttk.Checkbutton(self.config_frame, text="测试所有安全级别", variable=self.test_all_levels_var)
+
+        
+        # DVWA安全级别选择选项
+        self.security_level_frame = ttk.LabelFrame(self.config_frame, text="DVWA安全级别选择")
+        self.low_level_var = tk.BooleanVar(value=True)
+        self.medium_level_var = tk.BooleanVar(value=True)
+        self.high_level_var = tk.BooleanVar(value=True)
+        self.low_level_check = ttk.Checkbutton(self.security_level_frame, text="Low", variable=self.low_level_var)
+        self.medium_level_check = ttk.Checkbutton(self.security_level_frame, text="Medium", variable=self.medium_level_var)
+        self.high_level_check = ttk.Checkbutton(self.security_level_frame, text="High", variable=self.high_level_var)
         
         # 进度条和状态标签
         self.progress_frame = ttk.Frame(self.root)
@@ -145,9 +152,15 @@ class SQLInjectionGUITool:
         self.test_conn_btn.grid(row=0, column=2, padx=5, pady=10)
         self.scan_btn.grid(row=0, column=3, padx=5, pady=10)
         self.clear_btn.grid(row=0, column=4, padx=5, pady=10)
-        self.test_all_levels_check.grid(row=0, column=5, padx=5, pady=10)
+
         # 移除显示网站变化按钮，因为我们现在在同一窗口显示
         # self.show_changes_btn.grid(row=0, column=5, padx=5, pady=10)
+        
+        # DVWA安全级别选择框架
+        self.security_level_frame.grid(row=1, column=0, columnspan=6, padx=5, pady=5, sticky=tk.W)
+        self.low_level_check.grid(row=0, column=0, padx=5, pady=2)
+        self.medium_level_check.grid(row=0, column=1, padx=5, pady=2)
+        self.high_level_check.grid(row=0, column=2, padx=5, pady=2)
         
         # 设置列权重，使URL输入框能够拉伸
         self.config_frame.grid_columnconfigure(1, weight=1)
@@ -430,7 +443,15 @@ class SQLInjectionGUITool:
                 # 创建扫描器实例，传入进度回调和页面变化回调
                 if "dvwa" in url.lower():
                     scanner = DVWASQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes, enable_file_output=True)
-                    scanner.run_complete_scan(test_all_levels=self.test_all_levels_var.get())
+                    # 获取选中的安全级别
+                    selected_levels = []
+                    if self.low_level_var.get():
+                        selected_levels.append('low')
+                    if self.medium_level_var.get():
+                        selected_levels.append('medium')
+                    if self.high_level_var.get():
+                        selected_levels.append('high')
+                    scanner.run_complete_scan(test_all_levels=True, selected_levels=selected_levels)
                 else:
                     scanner = PikachuSQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes, enable_file_output=True)
                     scanner.run_complete_scan()

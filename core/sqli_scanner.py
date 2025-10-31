@@ -686,10 +686,16 @@ class SQLInjectionScanner:
             
             # 发送请求和标准请求进行比较
             if method == 'GET':
-                # 根据靶场类型决定submit参数值
-                submit_value = '查询' if 'pikachu' in self.base_url else 'Submit'
-                response = self.send_request(url, params={param: payload, 'submit': submit_value})
-                # 获取标准响应用于比较
+                if 'pikachu' in self.base_url:
+                    submit_param = 'submit'
+                    submit_value = '查询'
+                elif 'dvwa' in self.base_url:
+                    submit_param = 'Submit'
+                    submit_value = 'submit'
+                else:
+                    submit_param = 'submit'
+                    submit_value = 'Submit'
+                response = self.send_request(url, params={param: payload, submit_param: submit_value})    
                 standard_response = self.send_request(url, params={param: "test", 'submit': submit_value})
             else:
                 data = data_template.copy() if data_template else {}
@@ -1470,6 +1476,12 @@ class SQLInjectionScanner:
         if re.match(r'^(u|id)[0-9]{1,10}$', text, re.IGNORECASE):
             return True
         return False
+
+    def extract_tables1(self, url, method, param, data_template, closing_pattern, column_count, output_info=None):
+        pass
+
+    def extract_user_data1(self, url, method, param, data_template, closing_pattern, column_count, output_info=None):
+        pass
 
 # 辅助函数
 def extract_page_changes(text_a, text_b, scanner=None, output_file=None):

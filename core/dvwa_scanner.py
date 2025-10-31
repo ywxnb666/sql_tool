@@ -221,11 +221,12 @@ class DVWASQLiScanner(SQLInjectionScanner):
 
 
 
-    def run_complete_scan(self, test_all_levels=False):
+    def run_complete_scan(self, test_all_levels=False, selected_levels=None):
         """运行完整的DVWA SQL注入扫描
         
         参数:
             test_all_levels: 是否测试所有安全级别 (low, medium, high)
+            selected_levels: 选中的安全级别列表
         """
         self.print("=" * 30)
         self.print("DVWA SQL注入自动化扫描器")
@@ -242,7 +243,10 @@ class DVWASQLiScanner(SQLInjectionScanner):
         
         if test_all_levels:
             # 测试所有安全级别
-            security_levels = ['low', 'medium', 'high']
+            if selected_levels:
+                security_levels = selected_levels
+            else:
+                security_levels = ['low', 'medium', 'high']
             vulnerabilities_found = False
             
             for level in security_levels:
