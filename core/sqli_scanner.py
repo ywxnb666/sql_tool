@@ -613,7 +613,7 @@ class SQLInjectionScanner:
             union_payload = f"1 union select {union_select}"
         
         # 发送请求并与标准请求比较变化
-        standard_input = {"string": "vince", "search": "a", "xx": "1", "numeric": "1"}
+        standard_input = {"string": "vince", "search": "vince", "xx": "1", "numeric": "1"}
         
         if method == 'GET':
             # 根据靶场类型决定submit参数名和值
