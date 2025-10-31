@@ -1,0 +1,767 @@
+
+
+
+
+
+Get the pikachu
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    Pikachu 漏洞练习平台 pika~pika~
+                
+
+
+
+
+
+
+
+
+欢迎
+									骚年
+                        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 系统介绍 
+
+
+
+
+
+
+
+								暴力破解
+							
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            基于表单的暴力破解
+                        
+
+
+
+
+
+                            验证码绕过(on server)
+                        
+
+
+
+
+
+                            验证码绕过(on client)
+                        
+
+
+
+
+
+                            token防爆破?
+                        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+								Cross-Site Scripting
+							
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            反射型xss(get)
+                        
+
+
+
+
+
+                            反射型xss(post)
+                        
+
+
+
+
+
+                            存储型xss
+                        
+
+
+
+
+
+                            DOM型xss
+                        
+
+
+
+
+
+                            DOM型xss-x
+                        
+
+
+
+
+
+                            xss之盲打
+                        
+
+
+
+
+
+                            xss之过滤
+                        
+
+
+
+
+
+                            xss之htmlspecialchars
+                        
+
+
+
+
+
+                            xss之href输出
+                        
+
+
+
+
+
+                            xss之js输出
+                        
+
+
+
+
+
+
+
+
+								CSRF
+							
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            CSRF(get)
+                        
+
+
+
+
+
+                            CSRF(post)
+                        
+
+
+
+
+
+                            CSRF Token
+                        
+
+
+
+
+
+
+
+
+								SQL-Inject
+							
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            数字型注入(post)
+                        
+
+
+
+
+
+                            字符型注入(get)
+                        
+
+
+
+
+
+                            搜索型注入
+                        
+
+
+
+
+
+                            xx型注入
+                        
+
+
+
+
+
+                            "insert/update"注入
+                        
+
+
+
+
+
+                            "delete"注入
+                        
+
+
+
+
+
+                            "http header"注入
+                        
+
+
+
+
+
+                            盲注(base on boolian)
+                        
+
+
+
+
+
+                            盲注(base on time)
+                        
+
+
+
+
+
+                            宽字节注入
+                        
+
+
+
+
+
+
+
+
+                        RCE
+                    
+
+
+
+
+
+
+
+                        概述
+                    
+
+
+
+
+
+                        exec "ping"
+                    
+
+
+
+
+
+                        exec "evel"
+                    
+
+
+
+
+
+
+
+
+                    File Inclusion
+                
+
+
+
+
+
+
+
+                        概述
+                    
+
+
+
+
+
+                        File Inclusion(local)
+                    
+
+
+
+
+
+                        File Inclusion(remote)
+                    
+
+
+
+
+
+
+
+
+                Unsafe Filedownload
+            
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            Unsafe Filedownload
+                        
+
+
+
+
+
+
+
+
+                Unsafe Fileupload
+            
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            client check
+                        
+
+
+
+
+
+                            MIME type
+                        
+
+
+
+
+
+                            getimagesize
+                        
+
+
+
+
+
+
+
+
+                Over Permission
+            
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            水平越权
+                        
+
+
+
+
+
+                            垂直越权
+                        
+
+
+
+
+
+
+
+
+                ../../
+            
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            目录遍历
+                        
+
+
+
+
+
+
+
+
+                敏感信息泄露
+            
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            IcanseeyourABC
+                        
+
+
+
+
+
+
+
+
+                        PHP反序列化
+                    
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            PHP反序列化漏洞
+                        
+
+
+
+
+
+
+
+
+                XXE
+            
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            XXE漏洞
+                        
+
+
+
+
+
+
+
+
+                URL重定向
+            
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            不安全的URL跳转
+                        
+
+
+
+
+
+
+
+
+                SSRF
+                    
+
+
+
+
+
+
+
+                            概述
+                        
+
+
+
+
+
+                            SSRF(curl)
+                        
+
+
+
+
+
+                            SSRF(file_get_content)
+                        
+
+
+
+
+
+
+
+
+                管理工具
+                    
+
+
+
+
+
+
+
+                            XSS后台
+                        
+
+
+
+
+
+
+
+
+
+
+﻿
+
+
+
+
+
+
+
+sqli
+
+字符型注入
+
+
+                点一下提示~
+            
+
+
+
+what's your username?
+
+
+
+
+your uid:1 your email is: vince@pikachu.comyour uid:1 your email is: 2 
+
+
+
+
+
+
+
+							Pikachu PIKA~ PIKA~© runner.han
+						
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

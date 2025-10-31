@@ -1,16 +1,18 @@
 import argparse
 import re
 from core.pikachu_scanner import PikachuSQLiScanner
+from core.dvwa_scanner import DVWASQLiScanner
 from core.sqli_scanner import SQLInjectionScanner
 from gui.app import run_gui
 
 def main():
     """主函数，提供命令行参数解析和运行方式选择"""
     parser = argparse.ArgumentParser(description='SQL注入自动化扫描工具')
-    parser.add_argument('--url', type=str, help='Pikachu靶场URL')
+    parser.add_argument('--url', type=str, help='靶场URL (Pikachu或DVWA)')
     parser.add_argument('--gui', action='store_true', help='启动图形界面')
     parser.add_argument('--no-file-output', action='store_true', help='禁用文件输出')
     parser.add_argument('--test', type=str, help='测试特定URL的SQL注入')
+    parser.add_argument('--test-all-levels', action='store_true', help='测试所有DVWA安全级别 (low, medium, high)')
     
     args = parser.parse_args()
     
@@ -49,17 +51,29 @@ def main():
     else:
         # 命令行模式
         url = args.url
+        
         if not url:
-            # 如果没有提供URL，使用默认值
-            url = "http://192.168.232.128/pikachu"
-            print(f"未提供URL，使用默认值: {url}")
+            print("[!] 请提供靶场URL，使用 --url 参数")
+            return
         
         # 在命令行模式下默认启用文件输出，除非明确禁用
         enable_file_output = not args.no_file_output
         
         # 运行扫描
-        scanner = PikachuSQLiScanner(url, enable_file_output=enable_file_output)
-        scanner.run_complete_scan()
+        if "dvwa" in url.lower():
+            print("[*] 检测到DVWA靶场")
+            scanner = DVWASQLiScanner(url, enable_file_output=enable_file_output)
+            
+            # 检查是否要测试所有安全级别
+            if args.test_all_levels:
+                print("[*] 启用多安全级别测试模式")
+                scanner.run_complete_scan(test_all_levels=True)
+            else:
+                scanner.run_complete_scan()
+        else:
+            print("[*] 检测到Pikachu靶场")
+            scanner = PikachuSQLiScanner(url, enable_file_output=enable_file_output)
+            scanner.run_complete_scan()
 
 if __name__ == "__main__":
     main()

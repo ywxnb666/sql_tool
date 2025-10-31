@@ -10,6 +10,7 @@ from io import StringIO
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.pikachu_scanner import PikachuSQLiScanner
+from core.dvwa_scanner import DVWASQLiScanner
 
 class TextRedirector:
     """用于将控制台输出重定向到Tkinter文本控件"""
@@ -78,6 +79,10 @@ class SQLInjectionGUITool:
         self.clear_btn = ttk.Button(self.config_frame, text="清空结果", command=self.clear_results)
         self.show_changes_btn = ttk.Button(self.config_frame, text="显示网站变化", command=self.toggle_changes_window)
         
+        # 多安全级别测试选项
+        self.test_all_levels_var = tk.BooleanVar(value=True)
+        self.test_all_levels_check = ttk.Checkbutton(self.config_frame, text="测试所有安全级别", variable=self.test_all_levels_var)
+        
         # 进度条和状态标签
         self.progress_frame = ttk.Frame(self.root)
         self.progress_var = tk.DoubleVar(value=0)
@@ -140,6 +145,7 @@ class SQLInjectionGUITool:
         self.test_conn_btn.grid(row=0, column=2, padx=5, pady=10)
         self.scan_btn.grid(row=0, column=3, padx=5, pady=10)
         self.clear_btn.grid(row=0, column=4, padx=5, pady=10)
+        self.test_all_levels_check.grid(row=0, column=5, padx=5, pady=10)
         # 移除显示网站变化按钮，因为我们现在在同一窗口显示
         # self.show_changes_btn.grid(row=0, column=5, padx=5, pady=10)
         
@@ -355,7 +361,10 @@ class SQLInjectionGUITool:
                 # 重定向输出
                 sys.stdout = TextRedirector(self.result_text)
                 
-                scanner = PikachuSQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes, enable_file_output=True)
+                if "dvwa" in url.lower():
+                    scanner = DVWASQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes, enable_file_output=True)
+                else:
+                    scanner = PikachuSQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes, enable_file_output=True)
                 scanner.test_connection()
             finally:
                 # 恢复输出
@@ -419,8 +428,12 @@ class SQLInjectionGUITool:
                 sys.stdout = TextRedirector(self.result_text)
                 
                 # 创建扫描器实例，传入进度回调和页面变化回调
-                scanner = PikachuSQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes, enable_file_output=True)
-                scanner.run_complete_scan()
+                if "dvwa" in url.lower():
+                    scanner = DVWASQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes, enable_file_output=True)
+                    scanner.run_complete_scan(test_all_levels=self.test_all_levels_var.get())
+                else:
+                    scanner = PikachuSQLiScanner(url, self.update_output, self.update_progress, self.update_page_changes, enable_file_output=True)
+                    scanner.run_complete_scan()
             finally:
                 # 恢复标准输出
                 sys.stdout = self.original_stdout
