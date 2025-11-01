@@ -70,7 +70,7 @@ class SQLInjectionGUITool:
         self.url_entry = ttk.Entry(self.config_frame, textvariable=self.url_var, width=40, font=self.font_config)
         
         # 添加灰色默认提示
-        self.default_url = "http://192.168.232.128/pikachu/vul/sqli/sqli_search.php"
+        self.default_url = "http://192.168.232.128/dvwa/"
         self._add_placeholder()
         
         # 按钮
