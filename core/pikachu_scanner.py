@@ -156,15 +156,35 @@ class PikachuSQLiScanner(SQLInjectionScanner):
         self.print("\n[*] 开始测试XX型注入...")
         url = self.target_url
         
-        # 测试不同的闭合方式
-        test_payloads = ["1'","1')", '1\")', "1`)", "1') # ", "1') #", "1%'"]
+        # 测试不同的闭合方式, 这里可能还要改改
+        test_payloads = ['1\'','1\"', '1\")', '1`)', '1\')', '1%\'']
+        is_vul, db_type = [], []
+
+        for i in range(len(test_payloads)):
+            response = self.send_request(url, params={'name': test_payloads[i], 'submit': '查询'})
+            a, b = self.is_vulnerable(response)
+            is_vul.append(a)
+            db_type.append(b)
         
-        for payload in test_payloads:
-            response = self.send_request(url, params={'name': payload, 'submit': '查询'})
-            is_vul, db_type = self.is_vulnerable(response)
-            if is_vul:
-                self.print(f"[!] XX型注入 - 发现基于错误的SQL注入漏洞！使用Payload: {payload}")
-                return True, 'GET', 'name', None, payload
+        for i in range(len(test_payloads)):
+            if is_vul[i]:
+                response1 = self.send_request(url, params={'name': test_payloads[i] + " #", 'submit': '查询'})
+                a1, b1 = self.is_vulnerable(response1)
+                if not a1:
+                    self.print(f"[!] XX型注入 - 发现基于错误的SQL注入漏洞！使用Payload: {test_payloads[i]}")
+                    return True, 'GET', 'name', None, test_payloads[i]
+
+
+        # for payload in test_payloads:
+        #     response = self.send_request(url, params={'name': payload, 'submit': '查询'})
+        #     is_vul, db_type = self.is_vulnerable(response)
+
+        #     response1 = self.send_request(url, params={'name': payload + " #", 'submit': '查询'})
+        #     is_vul1, db_type1 = self.is_vulnerable(response1)
+
+            # if is_vul and not is_vul1:
+            #     self.print(f"[!] XX型注入 - 发现基于错误的SQL注入漏洞！使用Payload: {payload}")
+            #     return True, 'GET', 'name', None, payload
         
         # 测试基于布尔的盲注
         # true_payloads = ["1') AND ('1'='1", "1') AND 1=1 # "]
@@ -201,7 +221,7 @@ class PikachuSQLiScanner(SQLInjectionScanner):
         
         # 自动判断注入类型和HTTP方法
         injection_type, http_method, test_func = self.determine_injection_type_and_method(target_url)
-        self.print(f"[+] 自动判断: {injection_type}, HTTP方法: {http_method}")
+        # self.print(f"[+] 自动判断: {injection_type}, HTTP方法: {http_method}")
         
         # 只测试与URL相关的注入类型
         injection_types = [

