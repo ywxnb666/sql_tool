@@ -199,14 +199,26 @@ class DVWASQLiScanner(SQLInjectionScanner):
             # 低/中安全级别使用标准测试
             
             # 测试基于错误的注入
-            error_payloads = ["-1'", '-1"', "-1')", '-1")']
-            
-            for payload in error_payloads:
-                response = self.send_request(target_url, params={'id': payload, 'Submit': 'Submit'})
-                is_vul, db_type = self.is_vulnerable(response)
-                if is_vul:
-                    self.print(f"[!] 发现基于错误的SQL注入漏洞！使用Payload: {payload}")
-                    return True, 'GET', 'id', None, payload
+            test_payloads = ['-1\'','-1\"', '-1\")', '-1`)', '-1\')', '-1%\'']
+            is_vul, db_type = [], []
+
+            for i in range(len(test_payloads)):
+                response = self.send_request(target_url, params={'id': test_payloads[i], 'Submit': 'Submit'})
+                a, b = self.is_vulnerable(response)
+                is_vul.append(a)
+                db_type.append(b)
+                
+            if is_vul[0] and is_vul[1]:
+                self.print(f"[!] 发现数字型SQL注入漏洞！使用Payload: {test_payloads[0]}")
+                return True, 'GET', 'id', None, "-1"
+            else:
+                for i in range(len(test_payloads)):
+                    if is_vul[i]:
+                        response = self.send_request(target_url, params={'id': test_payloads[i] + " #", 'Submit': 'Submit'})
+                        a, b = self.is_vulnerable(response)
+                        if not a:
+                            self.print(f"[!] 发现基于错误的SQL注入漏洞！使用Payload: {test_payloads[i]}")
+                            return True, 'GET', 'id', None, test_payloads[i]
             
             # 测试基于布尔的盲注
             # true_payload = "1' AND '1'='1"

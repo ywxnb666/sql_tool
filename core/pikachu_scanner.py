@@ -157,7 +157,7 @@ class PikachuSQLiScanner(SQLInjectionScanner):
         url = self.target_url
         
         # 测试不同的闭合方式, 这里可能还要改改
-        test_payloads = ['1\'','1\"', '1\")', '1`)', '1\')', '1%\'']
+        test_payloads = ['-1\'','-1\"', '-1\")', '-1`)', '-1\')', '-1%\'']
         is_vul, db_type = [], []
 
         for i in range(len(test_payloads)):

