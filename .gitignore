@@ -23,8 +23,4 @@ Thumbs.db
 .pytest_cache/
 
 # 扫描结果（已有规则）
-<<<<<<< HEAD
 scan_results/
-=======
-scan_results/
->>>>>>> 8d141fb11345184fabb949aa1bfc11301be07bf5
