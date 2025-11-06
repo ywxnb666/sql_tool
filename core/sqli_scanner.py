@@ -417,27 +417,28 @@ class SQLInjectionScanner:
                 return True, db_type
         return False, None
 
-    def check_boolean_based(self, url, true_payload, false_payload, method='GET', param='id', data_template=None):
-        """基于布尔的盲注检测"""
-        if method.upper() == 'GET':
-            true_response = self.send_request(url, params={param: true_payload})
-            false_response = self.send_request(url, params={param: false_payload})
-        else:  # POST
-            true_data = data_template.copy() if data_template else {}
-            true_data[param] = true_payload
-            false_data = data_template.copy() if data_template else {}
-            false_data[param] = false_payload
-            true_response = self.send_request(url, method='POST', data=true_data)
-            false_response = self.send_request(url, method='POST', data=false_data)
+    # def check_boolean_based(self, url, true_payload, false_payload, method='GET', param='id', data_template=None):
+    #     """基于布尔的盲注检测"""
+    #     if method.upper() == 'GET':
+
+    #         true_response = self.send_request(url, params={param: true_payload})
+    #         false_response = self.send_request(url, params={param: false_payload})
+    #     else:  # POST
+    #         true_data = data_template.copy() if data_template else {}
+    #         true_data[param] = true_payload
+    #         false_data = data_template.copy() if data_template else {}
+    #         false_data[param] = false_payload
+    #         true_response = self.send_request(url, method='POST', data=true_data)
+    #         false_response = self.send_request(url, method='POST', data=false_data)
         
-        if true_response and false_response:
-            # 比较响应长度和内容哈希
-            if len(true_response.content) != len(false_response.content):
-                return True
-            # 检查页面特定关键词的变化
-            if "admin" in true_response.text.lower() and "admin" not in false_response.text.lower():
-                return True
-        return False
+    #     if true_response and false_response:
+    #         # 比较响应长度和内容哈希
+    #         if len(true_response.content) != len(false_response.content):
+    #             return True
+    #         # 检查页面特定关键词的变化
+    #         if "admin" in true_response.text.lower() and "admin" not in false_response.text.lower():
+    #             return True
+    #     return False
 
     def detect_column_count(self, url, method, param, data_template, payload):
         """通过ORDER BY判断字段数"""
