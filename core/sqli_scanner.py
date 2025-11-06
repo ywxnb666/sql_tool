@@ -525,8 +525,7 @@ class SQLInjectionScanner:
                 for i in range(1, column_count + 1):
                     if "2" in change:
                         # 替换"2"为捕获组，创建正则表达式模式
-                        # 这里简单处理，实际可能需要更复杂的逻辑
-                        pattern = re.escape(change.strip()).replace("2", "(.*?)", i).replace("2",".*?").__add__(f"(?={change.strip()[:4]}|\Z)")
+                        pattern = re.escape(change.strip()).replace("2", "(.*?)", i).replace("2",".*?").__add__(f"(?={change.strip()[:4]}|\Z|ID)")
                         output_positions.append(pattern)
             
             if output_positions:
