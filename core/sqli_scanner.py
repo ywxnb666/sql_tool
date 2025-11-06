@@ -447,10 +447,7 @@ class SQLInjectionScanner:
             self.update_progress(min(100, int(tests_done / total_tests * 10)), f"检测字段数: {i}")
             
             if response:
-                # 检查是否出现错误
                 is_vul, _ = self.is_vulnerable(response)
-                
-                # 如果出现错误，说明字段数超了
                 if is_vul:
                     if i == 1:  # ORDER BY 1就出错，可能是其他问题
                         continue
